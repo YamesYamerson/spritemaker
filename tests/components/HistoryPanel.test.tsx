@@ -68,12 +68,12 @@ describe('HistoryPanel', () => {
       
       render(<HistoryPanel canvasRef={mockRef} />)
       
-      // Should show undo operations (most recent first)
+      // Should show undo operations (most recent first) - these are currently visible in drawing area
       expect(screen.getByText('Eraser')).toBeInTheDocument()
       expect(screen.getByText('Pencil')).toBeInTheDocument()
       
-      // Should show redo operations
-      expect(screen.getByText('Fill')).toBeInTheDocument()
+      // Should NOT show redo operations - they are not visible in drawing area
+      expect(screen.queryByText('Fill')).not.toBeInTheDocument()
     })
   })
 
@@ -370,9 +370,13 @@ describe('HistoryPanel', () => {
       
       render(<HistoryPanel canvasRef={mockRef} />)
       
-      // Click on the redo operation
-      const operationItem = screen.getByText('Eraser')
-      fireEvent.click(operationItem)
+      // Redo operations are not displayed in the history panel since they're not visible in drawing area
+      // The redo button should still be enabled and functional
+      expect(screen.getByText('Redo')).not.toBeDisabled()
+      
+      // Click the redo button instead
+      const redoButton = screen.getByText('Redo')
+      fireEvent.click(redoButton)
       
       expect(mockCanvas.redo).toHaveBeenCalledTimes(1)
     })

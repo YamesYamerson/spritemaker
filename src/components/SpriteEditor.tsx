@@ -149,31 +149,33 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setPixels(newPixels)
   }, [pixels])
 
+  // Dispatch history change events when operations are added
+  const dispatchHistoryChange = useCallback(() => {
+    document.dispatchEvent(new CustomEvent('historyChange'))
+  }, [])
+
   // Undo function
   const undo = useCallback(() => {
     const operation = historyManagerRef.current.undo()
     if (operation) {
       applyStrokeOperation(operation, true)
+      dispatchHistoryChange() // Dispatch history change event after undo
     }
-  }, [applyStrokeOperation])
+  }, [applyStrokeOperation, dispatchHistoryChange])
 
   // Redo function
   const redo = useCallback(() => {
     const operation = historyManagerRef.current.redo()
     if (operation) {
       applyStrokeOperation(operation, false)
+      dispatchHistoryChange() // Dispatch history change event after redo
     }
     return operation
-  }, [applyStrokeOperation])
+  }, [applyStrokeOperation, dispatchHistoryChange])
 
   // Check if undo/redo are available
   const canUndo = useCallback(() => historyManagerRef.current.canUndo(), [])
   const canRedo = useCallback(() => historyManagerRef.current.canRedo(), [])
-
-  // Dispatch history change events when operations are added
-  const dispatchHistoryChange = useCallback(() => {
-    document.dispatchEvent(new CustomEvent('historyChange'))
-  }, [])
 
   // Flood fill algorithm with history tracking
   const floodFill = useCallback((startX: number, startY: number, targetColor: Color, replacementColor: Color) => {

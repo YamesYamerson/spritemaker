@@ -137,7 +137,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
       // Get canvas size for thumbnail generation
       const canvasSize = canvas.getCanvasSize ? canvas.getCanvasSize() : 32
 
-      // Add undo operations (most recent first)
+      // Only show operations that are currently visible in the drawing area
+      // These are the operations in the undo stack (applied to canvas)
       if (historyState.undoStack) {
         historyState.undoStack.slice().reverse().forEach((op: StrokeOperation) => {
           operations.push({
@@ -151,19 +152,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
         })
       }
 
-      // Add redo operations
-      if (historyState.redoStack) {
-        historyState.redoStack.forEach((op: StrokeOperation) => {
-          operations.push({
-            id: op.id,
-            tool: op.tool,
-            thumbnail: generateThumbnail(op.pixels, canvasSize),
-            timestamp: op.timestamp,
-            canUndo: false,
-            canRedo: true
-          })
-        })
-      }
+      // Don't show redo operations - they are not visible in the drawing area
+      // They only appear when you can redo them, but they're not displayed in the history panel
 
       return operations
     } catch (error) {
