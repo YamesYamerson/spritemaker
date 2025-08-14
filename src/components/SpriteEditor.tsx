@@ -28,12 +28,17 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   
   // History management
   const historyManagerRef = useRef<HistoryManager>(new HistoryManager(100))
-  const [currentStrokePixels, setCurrentStrokePixels] = useState<Array<{
-    x: number
-    y: number
-    previousColor: Color
-    newColor: Color
-  }>>([])
+  const [currentDrawingAction, setCurrentDrawingAction] = useState<{
+    tool: Tool
+    startPos: { x: number; y: number } | null
+    canvasStateBeforeDrawing: Map<string, PixelData> | null
+    isActive: boolean
+  }>({
+    tool: 'pencil',
+    startPos: null,
+    canvasStateBeforeDrawing: null,
+    isActive: false
+  })
 
   const activeLayer = layers.find(l => l.visible && l.active)
   const pixelSize = Math.max(1, Math.floor(512 / canvasSize))
@@ -50,7 +55,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setPixels(new Map())
     setLastPos(null)
     historyManagerRef.current.clear()
-    setCurrentStrokePixels([])
+    setCurrentDrawingAction({
+      tool: 'pencil',
+      startPos: null,
+      canvasStateBeforeDrawing: null,
+      isActive: false
+    })
   }, [canvasSize])
 
   // Draw function with history tracking
@@ -75,16 +85,32 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     // Force a new Map instance to ensure React detects the change
     setPixels(new Map(newPixels))
 
-    // Record pixel change for current stroke
-    if (recordHistory) {
-      setCurrentStrokePixels(prev => [...prev, {
+    // No need to record individual pixels anymore - we'll capture the entire state difference
+  }, [pixels, activeLayer])
+
+  // New method for drawing during active strokes (no history recording)
+  const drawPixelDuringStroke = useCallback((x: number, y: number, color: Color) => {
+    if (!activeLayer || !currentDrawingAction.isActive) return
+
+    const key = `${x},${y}`
+    const previousColor = pixels.get(key)?.color || 'transparent'
+    
+    // Update visual state immediately
+    const newPixels = new Map(pixels)
+    if (color === 'transparent') {
+      newPixels.delete(key)
+    } else {
+      newPixels.set(key, {
         x,
         y,
-        previousColor,
-        newColor: color
-      }])
+        color,
+        layerId: activeLayer.id
+      })
     }
-  }, [pixels, activeLayer])
+    setPixels(newPixels)
+    
+    // No need to accumulate pixels - we'll capture the entire state difference
+  }, [pixels, activeLayer, currentDrawingAction.isActive])
 
   // Apply a stroke operation (for undo/redo)
   const applyStrokeOperation = useCallback((operation: StrokeOperation, reverse: boolean = false) => {
@@ -253,31 +279,39 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setIsDrawing(true)
     setLastPos({ x, y })
     
-    // Reset current stroke pixels
-    setCurrentStrokePixels([])
+    // Start new drawing action
+    setCurrentDrawingAction({
+      tool: selectedTool,
+      startPos: { x, y },
+      canvasStateBeforeDrawing: new Map(pixels), // Capture state before drawing
+      isActive: true
+    })
     
-    switch (selectedTool) {
-      case 'pencil':
-        drawPixel(x, y, primaryColor)
-        break
-      case 'eraser':
-        drawPixel(x, y, 'transparent')
-        break
-      case 'fill':
-        const targetColor = getColorAt(x, y)
-        floodFill(x, y, targetColor, primaryColor)
-        break
-      case 'eyedropper':
-        const color = getColorAt(x, y)
-        if (color !== 'transparent') {
-          // Update primary color (you might want to add a callback for this)
-        }
-        break
+    // Handle immediate tools (fill, eyedropper) - these don't create drawing actions
+    if (selectedTool === 'fill') {
+      const targetColor = getColorAt(x, y)
+      floodFill(x, y, targetColor, primaryColor)
+      // Fill tool doesn't create a drawing action, so reset
+      setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else if (selectedTool === 'eyedropper') {
+      const color = getColorAt(x, y)
+      if (color !== 'transparent') {
+        // Update primary color (you might want to add a callback for this)
+      }
+      // Eyedropper doesn't create a drawing action, so reset
+      setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else {
+      // For drawing tools (pencil, eraser), draw the initial pixel
+      if (selectedTool === 'pencil') {
+        drawPixelDuringStroke(x, y, primaryColor)
+      } else if (selectedTool === 'eraser') {
+        drawPixelDuringStroke(x, y, 'transparent')
+      }
     }
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !lastPos || !activeLayer) return
+    if (!isDrawing || !lastPos || !activeLayer || !currentDrawingAction.isActive) return
     
     const rect = canvasRef.current!.getBoundingClientRect()
     const x = Math.floor((e.clientX - rect.left) / pixelSize)
@@ -298,9 +332,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       
       while (true) {
         if (selectedTool === 'pencil') {
-          drawPixel(currentX, currentY, primaryColor)
+          drawPixelDuringStroke(currentX, currentY, primaryColor)
         } else if (selectedTool === 'eraser') {
-          drawPixel(currentX, currentY, 'transparent')
+          drawPixelDuringStroke(currentX, currentY, 'transparent')
         }
         
         if (currentX === x && currentY === y) break
@@ -324,17 +358,64 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setIsDrawing(false)
     setLastPos(null)
     
-    // Record the completed stroke in history
-    if (currentStrokePixels.length > 0 && activeLayer) {
-      const operation = historyManagerRef.current.createStrokeOperation(
-        selectedTool,
-        activeLayer.id,
-        currentStrokePixels
-      )
-      historyManagerRef.current.pushOperation(operation)
-      dispatchHistoryChange() // Dispatch history change event
-      setCurrentStrokePixels([])
+    // Complete the drawing action and create history entry
+    if (currentDrawingAction.isActive && currentDrawingAction.canvasStateBeforeDrawing) {
+      const initialPixels = currentDrawingAction.canvasStateBeforeDrawing
+      const finalPixels = new Map(pixels)
+      
+      // Calculate the differences between initial and final states
+      const pixelChanges: Array<{
+        x: number
+        y: number
+        previousColor: Color
+        newColor: Color
+      }> = []
+      
+      // Check all pixels in the final state
+      finalPixels.forEach((pixel, key) => {
+        const initialPixel = initialPixels.get(key)
+        const initialColor = initialPixel ? initialPixel.color : 'transparent'
+        
+        if (initialColor !== pixel.color) {
+          pixelChanges.push({
+            x: pixel.x,
+            y: pixel.y,
+            previousColor: initialColor,
+            newColor: pixel.color
+          })
+        }
+      })
+      
+      // Check pixels that were in initial state but not in final state (deleted pixels)
+      initialPixels.forEach((pixel, key) => {
+        if (!finalPixels.has(key)) {
+          pixelChanges.push({
+            x: pixel.x,
+            y: pixel.y,
+            previousColor: pixel.color,
+            newColor: 'transparent'
+          })
+        }
+      })
+      
+      if (pixelChanges.length > 0) {
+        const operation = historyManagerRef.current.createStrokeOperation(
+          currentDrawingAction.tool,
+          activeLayer!.id,
+          pixelChanges
+        )
+        historyManagerRef.current.pushOperation(operation)
+        dispatchHistoryChange() // Dispatch history change event
+      }
     }
+    
+    // Reset drawing action
+    setCurrentDrawingAction({
+      tool: 'pencil',
+      startPos: null,
+      canvasStateBeforeDrawing: null,
+      isActive: false
+    })
   }
 
   // Keyboard shortcuts for undo/redo
