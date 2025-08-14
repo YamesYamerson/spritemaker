@@ -69,11 +69,11 @@ describe('HistoryPanel', () => {
       render(<HistoryPanel canvasRef={mockRef} />)
       
       // Should show undo operations (most recent first)
-      expect(screen.getByText('Eraser (3 pixels)')).toBeInTheDocument()
-      expect(screen.getByText('Pencil (5 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Eraser')).toBeInTheDocument()
+      expect(screen.getByText('Pencil')).toBeInTheDocument()
       
       // Should show redo operations
-      expect(screen.getByText('Fill (8 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Fill')).toBeInTheDocument()
     })
   })
 
@@ -190,9 +190,9 @@ describe('HistoryPanel', () => {
       
       render(<HistoryPanel canvasRef={mockRef} />)
       
-      expect(screen.getByText('Pencil (2 pixels)')).toBeInTheDocument()
-      expect(screen.getByText('Fill (5 pixels)')).toBeInTheDocument()
-      expect(screen.getByText('Eraser (3 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByText('Fill')).toBeInTheDocument()
+      expect(screen.getByText('Eraser')).toBeInTheDocument()
     })
 
     it('should display pixel counts correctly', () => {
@@ -210,8 +210,8 @@ describe('HistoryPanel', () => {
       
       render(<HistoryPanel canvasRef={mockRef} />)
       
-      expect(screen.getByText('Pencil (15 pixels)')).toBeInTheDocument()
-      expect(screen.getByText('Fill (42 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByText('Fill')).toBeInTheDocument()
     })
 
     it('should display timestamps correctly', () => {
@@ -254,7 +254,7 @@ describe('HistoryPanel', () => {
       render(<HistoryPanel canvasRef={mockRef} />)
       
       // The component should display the operation with "now" timestamp
-      expect(screen.getByText('Pencil (2 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Pencil')).toBeInTheDocument()
     })
   })
 
@@ -351,7 +351,7 @@ describe('HistoryPanel', () => {
       render(<HistoryPanel canvasRef={mockRef} />)
       
       // Click on the undo operation
-      const operationItem = screen.getByText('Pencil (2 pixels)')
+      const operationItem = screen.getByText('Pencil')
       fireEvent.click(operationItem)
       
       expect(mockCanvas.undo).toHaveBeenCalledTimes(1)
@@ -371,7 +371,7 @@ describe('HistoryPanel', () => {
       render(<HistoryPanel canvasRef={mockRef} />)
       
       // Click on the redo operation
-      const operationItem = screen.getByText('Eraser (3 pixels)')
+      const operationItem = screen.getByText('Eraser')
       fireEvent.click(operationItem)
       
       expect(mockCanvas.redo).toHaveBeenCalledTimes(1)
@@ -389,7 +389,7 @@ describe('HistoryPanel', () => {
       
       render(<HistoryPanel canvasRef={mockRef} />)
       
-      const operationItem = screen.getByText('Pencil (2 pixels)').closest('div')
+      const operationItem = screen.getByText('Pencil').closest('div')
       expect(operationItem).toBeInTheDocument()
       
       // Hover effects are handled by CSS, but we can verify the element structure
@@ -569,7 +569,7 @@ describe('HistoryPanel', () => {
       
       expect(screen.getByText('History')).toBeInTheDocument()
       // Should render without crashing
-      expect(screen.getByText('Pencil (1 pixels)')).toBeInTheDocument()
+      expect(screen.getAllByText('Pencil')).toHaveLength(1000)
     })
 
     it('should handle operations with extremely long tool names gracefully', () => {
@@ -627,8 +627,8 @@ describe('HistoryPanel', () => {
       
       expect(screen.getByText('History')).toBeInTheDocument()
       // Should handle invalid timestamps gracefully by still displaying the operations
-      expect(screen.getByText('Pencil (1 pixels)')).toBeInTheDocument()
-      expect(screen.getByText('Eraser (1 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByText('Eraser')).toBeInTheDocument()
     })
 
     it('should handle rapid history updates gracefully', () => {
@@ -736,8 +736,8 @@ describe('HistoryPanel', () => {
       
       expect(screen.getByText('History')).toBeInTheDocument()
       // Should handle invalid layer IDs gracefully by still displaying the operations
-      expect(screen.getByText('Pencil (1 pixels)')).toBeInTheDocument()
-      expect(screen.getByText('Eraser (1 pixels)')).toBeInTheDocument()
+      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByText('Eraser')).toBeInTheDocument()
     })
   })
 })

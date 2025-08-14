@@ -456,8 +456,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       canvas.canUndo = canUndo
       canvas.canRedo = canRedo
       canvas.getHistoryState = () => historyManagerRef.current.getState()
+      canvas.getCanvasSize = () => canvasSize
     }
-  }, [undo, redo, canUndo, canRedo])
+  }, [undo, redo, canUndo, canRedo, canvasSize])
 
   // Render canvas
   useEffect(() => {

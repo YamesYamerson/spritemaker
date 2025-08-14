@@ -8,7 +8,7 @@ interface HistoryPanelProps {
 interface HistoryOperation {
   id: string
   tool: string
-  pixelCount: number
+  thumbnail: string // Base64 data URL of the thumbnail
   timestamp: number
   canUndo: boolean
   canRedo: boolean
@@ -26,6 +26,50 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
     canUndo: false,
     canRedo: false
   })
+
+  // Generate thumbnail from pixel data
+  const generateThumbnail = (pixels: Array<{ x: number; y: number; newColor: string }>, canvasSize: number): string => {
+    const thumbnailSize = 32 // 32x32 thumbnail
+    const scale = thumbnailSize / canvasSize
+    
+    // Create a temporary canvas for the thumbnail
+    const canvas = document.createElement('canvas')
+    canvas.width = thumbnailSize
+    canvas.height = thumbnailSize
+    const ctx = canvas.getContext('2d')
+    
+    if (!ctx) return ''
+    
+    // Clear with transparent background
+    ctx.clearRect(0, 0, thumbnailSize, thumbnailSize)
+    
+    // Draw checkered background for transparency
+    const checkerSize = Math.max(1, Math.floor(thumbnailSize / 8))
+    for (let y = 0; y < thumbnailSize; y += checkerSize) {
+      for (let x = 0; x < thumbnailSize; x += checkerSize) {
+        const isEvenRow = Math.floor(y / checkerSize) % 2 === 0
+        const isEvenCol = Math.floor(x / checkerSize) % 2 === 0
+        const isLight = (isEvenRow && isEvenCol) || (!isEvenRow && !isEvenCol)
+        
+        ctx.fillStyle = isLight ? '#f0f0f0' : '#d0d0d0'
+        ctx.fillRect(x, y, checkerSize, checkerSize)
+      }
+    }
+    
+    // Draw the pixels
+    pixels.forEach(({ x, y, newColor }) => {
+      if (newColor !== 'transparent') {
+        const scaledX = Math.floor(x * scale)
+        const scaledY = Math.floor(y * scale)
+        const pixelSize = Math.max(1, Math.floor(scale))
+        
+        ctx.fillStyle = newColor
+        ctx.fillRect(scaledX, scaledY, pixelSize, pixelSize)
+      }
+    })
+    
+    return canvas.toDataURL('image/png')
+  }
 
   // Update history state when canvas ref changes or when undo/redo is performed
   useEffect(() => {
@@ -89,6 +133,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
     try {
       const historyState = canvas.getHistoryState()
       const operations: HistoryOperation[] = []
+      
+      // Get canvas size for thumbnail generation
+      const canvasSize = canvas.getCanvasSize ? canvas.getCanvasSize() : 32
 
       // Add undo operations (most recent first)
       if (historyState.undoStack) {
@@ -96,7 +143,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
           operations.push({
             id: op.id,
             tool: op.tool,
-            pixelCount: op.pixels.length,
+            thumbnail: generateThumbnail(op.pixels, canvasSize),
             timestamp: op.timestamp,
             canUndo: true,
             canRedo: false
@@ -110,7 +157,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
           operations.push({
             id: op.id,
             tool: op.tool,
-            pixelCount: op.pixels.length,
+            thumbnail: generateThumbnail(op.pixels, canvasSize),
             timestamp: op.timestamp,
             canUndo: false,
             canRedo: true
@@ -259,10 +306,30 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
                   {operation.tool.charAt(0).toUpperCase()}
                 </div>
 
+                {/* Thumbnail */}
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  border: '1px solid #555',
+                  borderRadius: '3px',
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}>
+                  <img 
+                    src={operation.thumbnail} 
+                    alt={`${operation.tool} operation`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+
                 {/* Operation Info */}
                 <div>
                   <div style={{ color: '#fff', fontSize: '12px', fontWeight: '500' }}>
-                    {formatToolName(operation.tool)} ({operation.pixelCount} pixels)
+                    {formatToolName(operation.tool)}
                   </div>
                   <div style={{ color: '#999', fontSize: '10px' }}>
                     {formatTimestamp(operation.timestamp)}
