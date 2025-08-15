@@ -1410,33 +1410,32 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     // Handle selection completion
     if (selection && selectedTool === 'select') {
-      // Calculate current selection bounds using raw coordinates but clamp to canvas boundaries
-      const rawBounds = {
+      // Calculate current selection bounds using raw coordinates - maintain original size
+      const selectionBounds = {
         startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
         startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
         endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
         endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
       }
       
-      // Clamp bounds to canvas size - selection cannot extend beyond canvas boundaries
-      // For pixel selection, we want indices 0 to canvasSize-1, but for visual coverage
-      // we need to extend to canvasSize to fully cover the last pixel
-      const currentBounds = {
-        startX: Math.max(0, rawBounds.startX),
-        startY: Math.max(0, rawBounds.startY),
-        endX: Math.min(canvasSize - 1, rawBounds.endX),
-        endY: Math.min(canvasSize - 1, rawBounds.endY)
+      // For pixel content, we need to clamp to canvas boundaries since we can only select existing pixels
+      // But the selection bounds themselves should maintain their size
+      const pixelContentBounds = {
+        startX: Math.max(0, selectionBounds.startX),
+        startY: Math.max(0, selectionBounds.startY),
+        endX: Math.min(canvasSize - 1, selectionBounds.endX),
+        endY: Math.min(canvasSize - 1, selectionBounds.endY)
       }
       
-      // Capture the actual pixel content within the selection
+      // Capture the actual pixel content within the selection (clamped to canvas)
       const selectionContent = new Map<string, PixelData>()
       pixels.forEach((pixel, _key) => {
-        if (pixel.x >= currentBounds.startX && pixel.x < currentBounds.endX + 1 &&
-            pixel.y >= currentBounds.startY && pixel.y < currentBounds.endY + 1 &&
+        if (pixel.x >= pixelContentBounds.startX && pixel.x < pixelContentBounds.endX + 1 &&
+            pixel.y >= pixelContentBounds.startY && pixel.y < pixelContentBounds.endY + 1 &&
             pixel.layerId === activeLayer!.id) {
           // Store relative coordinates for the selection content
-          const relativeX = pixel.x - currentBounds.startX
-          const relativeY = pixel.y - currentBounds.startY
+          const relativeX = pixel.x - pixelContentBounds.startX
+          const relativeY = pixel.y - pixelContentBounds.startY
           const relativeKey = `${relativeX},${relativeY}`
           selectionContent.set(relativeKey, {
             ...pixel,
@@ -1446,9 +1445,10 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       })
       
-      // Update the selection with new bounds and content (no history entry)
+      // Update the selection with the original bounds (maintaining size) and pixel content
       setSelection(prev => prev ? {
         ...prev,
+        currentPos: { x: selection.rawCurrentPos?.x ?? selection.currentPos.x, y: selection.rawCurrentPos?.y ?? selection.currentPos.y },
         content: selectionContent
       } : null)
       
