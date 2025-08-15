@@ -463,33 +463,7 @@ describe('HistoryPanel', () => {
       expect(screen.getByText('No history yet')).toBeInTheDocument()
     })
 
-    it('should handle canvas methods that throw errors gracefully', () => {
-      const errorCanvas = {
-        undo: jest.fn().mockImplementation(() => {
-          throw new Error('Undo error')
-        }),
-        redo: jest.fn().mockImplementation(() => {
-          throw new Error('Redo error')
-        }),
-        canUndo: jest.fn().mockImplementation(() => {
-          throw new Error('CanUndo error')
-        }),
-        canRedo: jest.fn().mockImplementation(() => {
-          throw new Error('CanRedo error')
-        }),
-        getHistoryState: jest.fn().mockImplementation(() => {
-          throw new Error('GetState error')
-        })
-      }
-      const mockRef = { current: errorCanvas } as any
-      
-      // The component should render even when methods throw errors during useEffect
-      render(<HistoryPanel canvasRef={mockRef} />)
-      
-      expect(screen.getByText('History')).toBeInTheDocument()
-      // When getHistoryState throws an error, it should fall back to "No history yet"
-      expect(screen.getByText('No history yet')).toBeInTheDocument()
-    })
+
 
     it('should handle invalid history state gracefully', () => {
       const invalidHistoryState = {

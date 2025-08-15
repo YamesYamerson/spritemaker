@@ -301,7 +301,7 @@ describe('Toolbar', () => {
       rerender(<Toolbar {...defaultProps} brushSize={(i % 4) + 1} />)
     }
     
-    expect(screen.getByText('Pencil')).toBeInTheDocument()
+    expect(screen.getByTitle('Pencil')).toBeInTheDocument()
   })
 
   it('should maintain brush size control functionality', () => {
@@ -326,8 +326,8 @@ describe('Toolbar', () => {
     
     // Check that all brush sizes are available
     const options = Array.from(brushSizeSelect.querySelectorAll('option'))
-    expect(options).toHaveLength(4) // 1, 2, 4, 8
-    expect(options.map(opt => opt.value)).toEqual(['1', '2', '4', '8'])
+    expect(options).toHaveLength(4) // 1, 2, 3, 4
+    expect(options.map(opt => opt.value)).toEqual(['1', '2', '3', '4'])
   })
 
   describe('Edge Cases and Error Handling', () => {
@@ -347,7 +347,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...minimalProps} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       expect(screen.getByText('Brush:')).toBeInTheDocument()
     })
 
@@ -357,7 +357,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithoutGrid} gridSettings={{} as any} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash when grid settings are missing
     })
 
@@ -378,7 +378,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithInvalidGrid} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with invalid grid settings
     })
 
@@ -391,7 +391,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithoutCallbacks} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash when callbacks are missing
     })
 
@@ -404,7 +404,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithInvalidColors} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with invalid colors
     })
 
@@ -416,7 +416,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithInvalidBrushSize} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with invalid brush size
     })
 
@@ -428,7 +428,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithLargeBrushSize} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with extremely large brush size
     })
 
@@ -440,7 +440,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithInvalidTool} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with invalid tool
     })
 
@@ -450,7 +450,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithoutTool} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash when selected tool is missing
     })
 
@@ -473,10 +473,10 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...errorCallbacks} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       
       // Should not crash when callbacks throw errors
-      const pencilButton = screen.getByText('Pencil')
+      const pencilButton = screen.getByTitle('Pencil')
       fireEvent.click(pencilButton)
       
       expect(errorCallbacks.onToolSelect).toHaveBeenCalled()
@@ -491,7 +491,7 @@ describe('Toolbar', () => {
         rerender(<Toolbar {...defaultProps} selectedTool={tool} />)
       }
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash under rapid tool changes
     })
 
@@ -517,14 +517,14 @@ describe('Toolbar', () => {
         rerender(<Toolbar {...defaultProps} primaryColor={color} />)
       }
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash under rapid color changes
     })
 
     it('should handle component unmounting during interactions gracefully', () => {
       const { unmount } = render(<Toolbar {...defaultProps} />)
       
-      const pencilButton = screen.getByText('Pencil')
+      const pencilButton = screen.getByTitle('Pencil')
       
       // Start interaction
       fireEvent.mouseDown(pencilButton)
@@ -533,7 +533,7 @@ describe('Toolbar', () => {
       unmount()
       
       // Should not crash
-      expect(screen.queryByText('Pencil')).not.toBeInTheDocument()
+      expect(screen.queryByTitle('Pencil')).not.toBeInTheDocument()
     })
 
     it('should handle missing DOM elements gracefully', () => {
@@ -543,7 +543,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...defaultProps} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash when DOM elements are missing
       
       // Restore original method
@@ -563,7 +563,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithIncompleteGrid} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with incomplete grid settings
     })
 
@@ -576,7 +576,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithLongTool} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with extremely long tool names
     })
 
@@ -589,7 +589,7 @@ describe('Toolbar', () => {
       
       render(<Toolbar {...propsWithSpecialChars} />)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with special characters
     })
 
@@ -617,7 +617,7 @@ describe('Toolbar', () => {
         rerender(<Toolbar {...defaultProps} brushSize={4} />)
       }, 0)
       
-      expect(screen.getByText('Pencil')).toBeInTheDocument()
+      expect(screen.getByTitle('Pencil')).toBeInTheDocument()
       // Should not crash with concurrent updates
     })
   })
