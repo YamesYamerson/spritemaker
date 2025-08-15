@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Tool, Color, Layer, PixelData, GridSettings, StrokeOperation } from '../types'
 import { HistoryManager } from '../utils/historyManager'
+import { generateBrushPattern, applyBrushPattern } from '../utils/brushPatterns'
 
 interface SpriteEditorProps {
   selectedTool: Tool
@@ -16,6 +17,8 @@ interface SpriteEditorProps {
 const SpriteEditor: React.FC<SpriteEditorProps> = ({
   selectedTool,
   primaryColor,
+  secondaryColor,
+  brushSize,
   canvasSize,
   layers,
   onCanvasRef,
@@ -42,6 +45,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   const activeLayer = layers.find(l => l.visible && l.active)
   const pixelSize = Math.max(1, Math.floor(512 / canvasSize))
+
+  // Memoize brush pattern to avoid regeneration
+  const currentBrushPattern = useMemo(() => generateBrushPattern(brushSize), [brushSize])
 
   // Expose canvas ref to parent
   useEffect(() => {
@@ -107,10 +113,47 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         layerId: activeLayer.id
       })
     }
-    setPixels(newPixels)
     
-    // No need to accumulate pixels - we'll capture the entire state difference
+    setPixels(newPixels)
   }, [pixels, activeLayer, currentDrawingAction.isActive])
+
+  // New method for drawing with brush patterns
+  const drawWithBrushPattern = useCallback((x: number, y: number, color: Color) => {
+    if (!activeLayer || !currentDrawingAction.isActive) return
+    
+    // Apply brush pattern efficiently
+    applyBrushPattern(currentBrushPattern, x, y, (pixelX, pixelY) => {
+      // Check bounds
+      if (pixelX < 0 || pixelX >= canvasSize || pixelY < 0 || pixelY >= canvasSize) return
+      
+      const key = `${pixelX},${pixelY}`
+      const existingPixel = pixels.get(key)
+      
+      // Only update if the pixel actually changes
+      if (color === 'transparent') {
+        if (existingPixel) {
+          setPixels(prevPixels => {
+            const newPixels = new Map(prevPixels)
+            newPixels.delete(key)
+            return newPixels
+          })
+        }
+      } else {
+        if (!existingPixel || existingPixel.color !== color) {
+          setPixels(prevPixels => {
+            const newPixels = new Map(prevPixels)
+            newPixels.set(key, {
+              x: pixelX,
+              y: pixelY,
+              color,
+              layerId: activeLayer.id
+            })
+            return newPixels
+          })
+        }
+      }
+    })
+  }, [pixels, activeLayer, currentDrawingAction.isActive, brushSize, canvasSize, currentBrushPattern])
 
   // Apply a stroke operation (for undo/redo)
   const applyStrokeOperation = useCallback((operation: StrokeOperation, reverse: boolean = false) => {
@@ -305,9 +348,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     } else {
       // For drawing tools (pencil, eraser), draw the initial pixel
       if (selectedTool === 'pencil') {
-        drawPixelDuringStroke(x, y, primaryColor)
+        drawWithBrushPattern(x, y, primaryColor)
       } else if (selectedTool === 'eraser') {
-        drawPixelDuringStroke(x, y, 'transparent')
+        drawWithBrushPattern(x, y, 'transparent')
       }
     }
   }
@@ -322,33 +365,82 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
     
     if (selectedTool === 'pencil' || selectedTool === 'eraser') {
-      // Simple line drawing between last position and current
+      // Always interpolate to ensure no gaps, regardless of distance
       const dx = Math.abs(x - lastPos.x)
       const dy = Math.abs(y - lastPos.y)
-      const sx = lastPos.x < x ? 1 : -1
-      const sy = lastPos.y < y ? 1 : -1
-      let err = dx - dy
+      const distance = Math.max(dx, dy)
       
-      let currentX = lastPos.x
-      let currentY = lastPos.y
-      
-      while (true) {
+      if (distance === 0) {
+        // No movement, just draw at current position
         if (selectedTool === 'pencil') {
-          drawPixelDuringStroke(currentX, currentY, primaryColor)
+          drawWithBrushPattern(x, y, primaryColor)
         } else if (selectedTool === 'eraser') {
-          drawPixelDuringStroke(currentX, currentY, 'transparent')
+          drawWithBrushPattern(x, y, 'transparent')
+        }
+      } else {
+        // Always interpolate to fill any potential gaps
+        
+        // Collect all pixels for this line and update state once
+        const pixelsToUpdate = new Map<string, { x: number; y: number; color: Color; layerId: number }>()
+        
+        // Use Bresenham's algorithm to draw a complete line
+        const sx = lastPos.x < x ? 1 : -1
+        const sy = lastPos.y < y ? 1 : -1
+        let err = dx - dy
+        
+        let currentX = lastPos.x
+        let currentY = lastPos.y
+        
+        while (true) {
+          // Apply brush pattern to collect all pixels for this position
+          applyBrushPattern(currentBrushPattern, currentX, currentY, (pixelX, pixelY) => {
+            if (pixelX < 0 || pixelX >= canvasSize || pixelY < 0 || pixelY >= canvasSize) return
+            
+            const key = `${pixelX},${pixelY}`
+            const existingPixel = pixels.get(key)
+            const color = selectedTool === 'pencil' ? primaryColor : 'transparent'
+            
+            // Only add if the pixel actually changes
+            if (color === 'transparent') {
+              if (existingPixel) {
+                // Mark for deletion (we'll handle this in the batch update)
+                pixelsToUpdate.set(key, { x: pixelX, y: pixelY, color: 'transparent', layerId: activeLayer.id })
+              }
+            } else {
+              if (!existingPixel || existingPixel.color !== color) {
+                pixelsToUpdate.set(key, { x: pixelX, y: pixelY, color, layerId: activeLayer.id })
+              }
+            }
+          })
+          
+          if (currentX === x && currentY === y) break
+          
+          const e2 = 2 * err
+          if (e2 > -dy) {
+            err -= dy
+            currentX += sx
+          }
+          if (e2 < dx) {
+            err += dx
+            currentY += sy
+          }
         }
         
-        if (currentX === x && currentY === y) break
-        
-        const e2 = 2 * err
-        if (e2 > -dy) {
-          err -= dy
-          currentX += sx
-        }
-        if (e2 < dx) {
-          err += dx
-          currentY += sy
+        // Batch update all pixels at once
+        if (pixelsToUpdate.size > 0) {
+          setPixels(prevPixels => {
+            const newPixels = new Map(prevPixels)
+            
+            pixelsToUpdate.forEach((pixelData, key) => {
+              if (pixelData.color === 'transparent') {
+                newPixels.delete(key)
+              } else {
+                newPixels.set(key, pixelData)
+              }
+            })
+            
+            return newPixels
+          })
         }
       }
     }
