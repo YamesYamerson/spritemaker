@@ -67,6 +67,10 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   
   // Track if we're actively selecting (mouse down to mouse up)
   const [isSelecting, setIsSelecting] = useState(false)
+  
+  // State for lasso tool
+  const [lassoPath, setLassoPath] = useState<Array<{ x: number; y: number }>>([])
+  const [isLassoing, setIsLassoing] = useState(false)
 
   // State for clipboard operations
   const [clipboard, setClipboard] = useState<{
@@ -324,9 +328,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
   }, [selection, handleCopy, handleCut, handlePaste])
 
-  // Global mouse move handler for select tool when cursor is outside canvas
+  // Global mouse move handler for select and lasso tools when cursor is outside canvas
   useEffect(() => {
-    if (!selection || selectedTool !== 'select' || !isSelecting) return
+    if (!selection || (selectedTool !== 'select' && selectedTool !== 'lasso') || (!isSelecting && !isLassoing)) return
 
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!canvasRef.current || !activeLayer) return
@@ -335,7 +339,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       const x = Math.floor((e.clientX - rect.left) / pixelSize)
       const y = Math.floor((e.clientY - rect.top) / pixelSize)
       
-      // For select tool, we want to allow the selection to grow even when cursor is outside canvas
+      // For select and lasso tools, we want to allow the selection to grow even when cursor is outside canvas
       // We'll clamp the visual display but allow the raw coordinates for selection bounds
       const clampedX = Math.max(0, Math.min(x, canvasSize - 1))
       const clampedY = Math.max(0, Math.min(y, canvasSize - 1))
@@ -347,15 +351,50 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         // Store the raw coordinates for proper bounds calculation
         rawCurrentPos: { x, y }
       } : null)
+      
+      // For lasso tool, also update the path
+      if (selectedTool === 'lasso' && isLassoing) {
+        // Only add new point if it's different from the last point to avoid duplicate coordinates
+        setLassoPath(prev => {
+          const lastPoint = prev[prev.length - 1]
+          if (!lastPoint || lastPoint.x !== clampedX || lastPoint.y !== clampedY) {
+            // For pixel art, ensure we're creating a proper boundary path
+            // Add intermediate points if there's a gap larger than 1 pixel
+            if (lastPoint) {
+              const dx = Math.abs(clampedX - lastPoint.x)
+              const dy = Math.abs(clampedY - lastPoint.y)
+              
+              // If there's a gap larger than 1 pixel, add intermediate points
+              if (dx > 1 || dy > 1) {
+                const intermediatePoints = []
+                const steps = Math.max(dx, dy)
+                
+                for (let i = 1; i < steps; i++) {
+                  const t = i / steps
+                  const interX = Math.round(lastPoint.x + (clampedX - lastPoint.x) * t)
+                  const interY = Math.round(lastPoint.y + (clampedY - lastPoint.y) * t)
+                  intermediatePoints.push({ x: interX, y: interY })
+                }
+                
+                return [...prev, ...intermediatePoints, { x: clampedX, y: clampedY }]
+              }
+            }
+            
+            return [...prev, { x: clampedX, y: clampedY }]
+          }
+          return prev
+        })
+      }
     }
 
     const handleGlobalMouseUp = (_e: MouseEvent) => {
-      if (!selection || selectedTool !== 'select' || !isSelecting) return
+      if (!selection || (selectedTool !== 'select' && selectedTool !== 'lasso') || (!isSelecting && !isLassoing)) return
       
       // Complete the selection when mouse is released anywhere
       setIsDrawing(false)
       setLastPos(null)
       setIsSelecting(false) // Stop selecting
+      setIsLassoing(false) // Stop lassoing
     }
 
     document.addEventListener('mousemove', handleGlobalMouseMove)
@@ -364,7 +403,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       document.removeEventListener('mousemove', handleGlobalMouseMove)
       document.removeEventListener('mouseup', handleGlobalMouseUp)
     }
-  }, [selection, selectedTool, isSelecting, activeLayer, pixelSize, canvasSize])
+  }, [selection, selectedTool, isSelecting, isLassoing, activeLayer, pixelSize, canvasSize])
 
   // Initialize canvas when size changes
   useEffect(() => {
@@ -964,10 +1003,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     // For other tools, require coordinates to be within bounds
     if (selectedTool !== 'select' && (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize)) return
     
-          // For select tool, always clear existing selection when starting a new one
-    if (selectedTool === 'select' && selection) {
+          // For select and lasso tools, always clear existing selection when starting a new one
+    if ((selectedTool === 'select' || selectedTool === 'lasso') && selection) {
       setSelection(null)
       setIsSelecting(false) // Stop any active selecting
+      setIsLassoing(false) // Stop any active lassoing
+      setLassoPath([]) // Clear lasso path
     }
     // For other tools, clear selection if clicking outside the current selection area
     else if (selection) {
@@ -979,6 +1020,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       if (x < minX || x > maxX || y < minY || y > maxY) {
         setSelection(null)
         setIsSelecting(false) // Stop any active selecting
+        setIsLassoing(false) // Stop any active lassoing
+        setLassoPath([]) // Clear lasso path
       }
     }
     
@@ -1032,6 +1075,22 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
       setIsSelecting(true) // Start actively selecting
       // Don't create a drawing action - selection is just visual
+      setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else if (selectedTool === 'lasso') {
+      // For lasso tool, start tracking the free-form selection path
+      const clampedX = Math.max(0, Math.min(x, canvasSize - 1))
+      const clampedY = Math.max(0, Math.min(y, canvasSize - 1))
+      setSelection({
+        startPos: { x: clampedX, y: clampedY },
+        currentPos: { x: clampedX, y: clampedY },
+        rawCurrentPos: { x: clampedX, y: clampedY }, // Initialize raw coordinates
+        isActive: true,
+        content: new Map() // Initialize content for new selection
+      })
+      setIsLassoing(true) // Start actively lassoing
+      // Start the lasso path with pixel-perfect coordinates
+      setLassoPath([{ x: clampedX, y: clampedY }])
+      // Don't create a drawing action - lasso is just visual
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
     } else {
       // For drawing tools (pencil, eraser), draw the initial pixel
@@ -1758,29 +1817,62 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       ctx.globalAlpha = 1.0
     }
     
-    // Draw selection rectangle
+    // Draw selection rectangle or lasso path
     if (selection) {
       const { startPos, currentPos, rawCurrentPos } = selection
       ctx.strokeStyle = '#1e3a8a' // Dark blue selection outline
       ctx.lineWidth = 2
       ctx.globalAlpha = 0.8
       
-      // Calculate bounds using raw coordinates but clamp to canvas boundaries for display
-      // For visual representation, we extend to canvasSize to fully cover the last pixel
-      const actualCurrentPos = rawCurrentPos || currentPos
-      const minX = Math.max(0, Math.min(startPos.x, actualCurrentPos.x)) * pixelSize
-      const maxX = Math.min(canvasSize, Math.max(startPos.x, actualCurrentPos.x)) * pixelSize
-      const minY = Math.max(0, Math.min(startPos.y, actualCurrentPos.y)) * pixelSize
-      const maxY = Math.min(canvasSize, Math.max(startPos.y, actualCurrentPos.y)) * pixelSize
-      
-      // Draw selection rectangle (dashed if supported, solid otherwise)
-      if (ctx.setLineDash) {
-        ctx.setLineDash([5, 5])
-        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
-        ctx.setLineDash([]) // Reset to solid line
+      if (selectedTool === 'lasso' && lassoPath.length > 1) {
+        // Draw lasso path with dashed lines for pixel art consistency
+        ctx.beginPath()
+        
+        // Start at the first point, ensuring pixel-perfect positioning
+        const startX = Math.round(lassoPath[0].x * pixelSize)
+        const startY = Math.round(lassoPath[0].y * pixelSize)
+        ctx.moveTo(startX, startY)
+        
+        // Draw lines to each subsequent point
+        for (let i = 1; i < lassoPath.length; i++) {
+          const x = Math.round(lassoPath[i].x * pixelSize)
+          const y = Math.round(lassoPath[i].y * pixelSize)
+          ctx.lineTo(x, y)
+        }
+        
+        // Close the path if it's long enough to form a proper selection
+        if (lassoPath.length > 2) {
+          ctx.closePath()
+        }
+        
+        // Apply dashed line style to match rectangular selection
+        if (ctx.setLineDash) {
+          ctx.setLineDash([5, 5])
+          ctx.stroke()
+          ctx.setLineDash([]) // Reset to solid line
+        } else {
+          // Fallback to solid line if setLineDash is not supported
+          ctx.stroke()
+        }
       } else {
-        // Fallback to solid line if setLineDash is not supported
-        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+        // Draw selection rectangle
+        // Calculate bounds using raw coordinates but clamp to canvas boundaries for display
+        // For visual representation, we extend to canvasSize to fully cover the last pixel
+        const actualCurrentPos = rawCurrentPos || currentPos
+        const minX = Math.max(0, Math.min(startPos.x, actualCurrentPos.x)) * pixelSize
+        const maxX = Math.min(canvasSize, Math.max(startPos.x, actualCurrentPos.x)) * pixelSize
+        const minY = Math.max(0, Math.min(startPos.y, actualCurrentPos.y)) * pixelSize
+        const maxY = Math.min(canvasSize, Math.max(startPos.y, actualCurrentPos.y)) * pixelSize
+        
+        // Draw selection rectangle (dashed if supported, solid otherwise)
+        if (ctx.setLineDash) {
+          ctx.setLineDash([5, 5])
+          ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+          ctx.setLineDash([]) // Reset to solid line
+        } else {
+          // Fallback to solid line if setLineDash is not supported
+          ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+        }
       }
       
       ctx.globalAlpha = 1.0

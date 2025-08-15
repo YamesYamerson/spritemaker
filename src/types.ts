@@ -1,4 +1,4 @@
-export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select' | 'copy' | 'cut' | 'paste'
+export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select' | 'lasso' | 'copy' | 'cut' | 'paste'
 
 export type Color = string
 

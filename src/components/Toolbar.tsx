@@ -164,6 +164,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     { id: 'fill', name: 'Fill', icon: '/icons/fill.svg', iconType: 'svg' },
     { id: 'eyedropper', name: 'Eyedropper', icon: '/icons/eyedropper.png', iconType: 'png' },
     { id: 'select', name: 'Select', icon: '/icons/select.svg', iconType: 'svg' },
+    { id: 'lasso', name: 'Lasso', icon: '/icons/lasso.svg', iconType: 'svg' },
     { id: 'line', name: 'Line', icon: '/icons/line.svg', iconType: 'svg' }
   ]
 
