@@ -283,9 +283,10 @@ describe('Toolbar', () => {
     const brushControl = screen.getByTitle('Brush Size')
     expect(brushControl).toBeInTheDocument()
     
-    // Check that the visual brush size circle exists (now an SVG circle)
-    const brushCircle = brushControl.querySelector('svg circle')
-    expect(brushCircle).toBeInTheDocument()
+    // Check that the visual brush size representation exists (now an img element)
+    const brushImage = brushControl.querySelector('img')
+    expect(brushImage).toBeInTheDocument()
+    expect(brushImage).toHaveAttribute('src')
   })
 
   it('should have proper tool button styling', () => {
