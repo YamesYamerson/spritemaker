@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Tool, Color, GridSettings } from '../types'
 
 interface ToolbarProps {
@@ -60,6 +60,70 @@ const Toolbar: React.FC<ToolbarProps> = ({
     }
   }
 
+  // State for grid dropdown visibility
+  const [isGridDropdownOpen, setIsGridDropdownOpen] = useState(false)
+  const gridDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Click outside handler to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (gridDropdownRef.current && !gridDropdownRef.current.contains(event.target as Node)) {
+        setIsGridDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Helper function to get current grid type for dropdown
+  const getCurrentGridType = (): string => {
+    if (safeGridSettings.quarter) return 'quarter'
+    if (safeGridSettings.eighths) return 'eighths'
+    if (safeGridSettings.sixteenths) return 'sixteenths'
+    if (safeGridSettings.thirtyseconds) return 'thirtyseconds'
+    if (safeGridSettings.sixtyfourths) return 'sixtyfourths'
+    return 'none'
+  }
+
+  // Helper function to handle grid type change
+  const handleGridTypeChange = (gridType: string) => {
+    const newSettings = {
+      ...safeGridSettings,
+      quarter: false,
+      eighths: false,
+      sixteenths: false,
+      thirtyseconds: false,
+      sixtyfourths: false
+    }
+    
+    switch (gridType) {
+      case 'quarter':
+        newSettings.quarter = true
+        break
+      case 'eighths':
+        newSettings.eighths = true
+        break
+      case 'sixteenths':
+        newSettings.sixteenths = true
+        break
+      case 'thirtyseconds':
+        newSettings.thirtyseconds = true
+        break
+      case 'sixtyfourths':
+        newSettings.sixtyfourths = true
+        break
+      case 'none':
+      default:
+        // All grid types are already false
+        break
+    }
+    
+    safeGridSettingsChange(newSettings)
+  }
+
   const tools: { id: Tool; name: string; icon: string; iconType: 'svg' | 'png' }[] = [
     { id: 'pencil', name: 'Pencil', icon: '/icons/pencil.svg', iconType: 'svg' },
     { id: 'eraser', name: 'Eraser', icon: '/icons/eraser.svg', iconType: 'svg' },
@@ -71,7 +135,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   ]
 
   return (
-    <div className="toolbar">
+    <div className="toolbar" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
       {/* Brush Size Control - positioned to the left of tools */}
       <div 
         style={{
@@ -85,7 +149,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
           borderRadius: '4px',
           height: '36px',
           justifyContent: 'center',
-          marginRight: '15px',
           cursor: 'pointer',
           position: 'relative'
         }}
@@ -158,8 +221,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </select>
       </div>
 
-      {/* Tools */}
-      <div>
+      {/* Tools and Grid Controls - All in one row */}
+      <div style={{ display: 'flex', alignItems: 'center' }}>
         {tools.map(tool => (
           <button
             key={tool.id}
@@ -175,132 +238,159 @@ const Toolbar: React.FC<ToolbarProps> = ({
           </button>
         ))}
         
-        {/* Grid Toggle Tool */}
-        <button
-          className={`tool-button ${safeGridSettings.visible ? 'active' : ''}`}
-          onClick={() => safeGridSettingsChange({
-            ...safeGridSettings,
-            visible: !safeGridSettings.visible
-          })}
-          title={`Show Grid - Currently ${safeGridSettings.visible ? 'ON' : 'OFF'}`}
-          style={{ marginLeft: '8px' }}
+        {/* Grid Controls - Icon-based dropdown */}
+        <div 
+          ref={gridDropdownRef}
+          style={{ 
+            position: 'relative', 
+            marginLeft: '8px' 
+          }}
         >
-          <img
-            src={safeGridSettings.visible ? '/icons/gimp-all/default-svg/gimp-grid.svg' : '/icons/gimp-all/default-svg/gimp-grid-symbolic.svg'}
-            alt="Grid"
-            style={{ 
-              width: '20px', 
-              height: '20px',
-              filter: safeGridSettings.visible ? 'brightness(1.2) saturate(1.2)' : 'none',
-              border: safeGridSettings.visible ? '1px solid #666' : 'none',
-              borderRadius: safeGridSettings.visible ? '2px' : '0'
-            }}
-          />
-        </button>
+          {/* Grid Toggle Button - Main clickable icon */}
+          <button
+            className={`tool-button ${safeGridSettings.visible ? 'active' : ''}`}
+            onClick={() => setIsGridDropdownOpen(!isGridDropdownOpen)}
+            title={`Grid Options - Currently ${safeGridSettings.visible ? 'ON' : 'OFF'}`}
+            style={{ position: 'relative' }}
+          >
+            <img
+              src={safeGridSettings.visible ? '/icons/gimp-all/default-svg/gimp-grid.svg' : '/icons/gimp-all/default-svg/gimp-grid-symbolic.svg'}
+              alt="Grid"
+              style={{ 
+                width: '20px', 
+                height: '20px',
+                filter: safeGridSettings.visible ? 'brightness(1.2) saturate(1.2)' : 'none',
+                border: safeGridSettings.visible ? '1px solid #666' : 'none',
+                borderRadius: safeGridSettings.visible ? '2px' : '0'
+              }}
+            />
+            
+            {/* Dropdown arrow indicator */}
+            <div style={{
+              position: 'absolute',
+              bottom: '2px',
+              right: '2px',
+              width: '0',
+              height: '0',
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '4px solid #ccc',
+              fontSize: '8px'
+            }} />
+          </button>
 
-        {/* Quarter Grid Tool */}
-        <button
-          className={`tool-button ${safeGridSettings.quarter ? 'active' : ''}`}
-          onClick={() => safeGridSettingsChange({
-            ...safeGridSettings,
-            quarter: !safeGridSettings.quarter,
-            eighths: false,
-            sixteenths: false,
-            thirtyseconds: false,
-            sixtyfourths: false
-          })}
-          title={`Quarter Grid - Currently ${safeGridSettings.quarter ? 'ON' : 'OFF'}`}
-        >
-          <img
-            src="/icons/quarter-new-icon.svg"
-            alt="Quarter Grid"
-            style={{ width: '20px', height: '20px' }}
-          />
-        </button>
+          {/* Grid Options Dropdown */}
+          {isGridDropdownOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '0',
+              backgroundColor: '#4a4a4a',
+              border: '1px solid #666',
+              borderRadius: '4px',
+              padding: '4px',
+              zIndex: 9999,
+              minWidth: '120px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              marginTop: '2px'
+            }}>
+              {/* Grid Visibility Toggle */}
+              <button
+                onClick={() => {
+                  safeGridSettingsChange({
+                    ...safeGridSettings,
+                    visible: !safeGridSettings.visible
+                  })
+                  setIsGridDropdownOpen(false)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  borderRadius: '2px'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#555'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                title={`Toggle Grid Visibility - Currently ${safeGridSettings.visible ? 'ON' : 'OFF'}`}
+              >
+                <img
+                  src={safeGridSettings.visible ? '/icons/gimp-all/default-svg/gimp-grid.svg' : '/icons/gimp-all/default-svg/gimp-grid-symbolic.svg'}
+                  alt="Grid Visibility"
+                  style={{ width: '16px', height: '16px' }}
+                />
+                {safeGridSettings.visible ? 'Hide Grid' : 'Show Grid'}
+              </button>
 
-        {/* Eighths Grid Tool */}
-        <button
-          className={`tool-button ${safeGridSettings.eighths ? 'active' : ''}`}
-          onClick={() => safeGridSettingsChange({
-            ...safeGridSettings,
-            quarter: false,
-            eighths: !safeGridSettings.eighths,
-            sixteenths: false,
-            thirtyseconds: false,
-            sixtyfourths: false
-          })}
-          title={`Eighths Grid - Currently ${safeGridSettings.eighths ? 'ON' : 'OFF'}`}
-        >
-          <img
-            src="/icons/eighth-new-icon.svg"
-            alt="Eighths Grid"
-            style={{ width: '20px', height: '20px' }}
-          />
-        </button>
+              <div style={{ 
+                height: '1px', 
+                backgroundColor: '#666', 
+                margin: '4px 0' 
+              }} />
 
-        {/* Sixteenths Grid Tool */}
-        <button
-          className={`tool-button ${safeGridSettings.sixteenths ? 'active' : ''}`}
-          onClick={() => safeGridSettingsChange({
-            ...safeGridSettings,
-            quarter: false,
-            eighths: false,
-            sixteenths: !safeGridSettings.sixteenths,
-            thirtyseconds: false,
-            sixtyfourths: false
-          })}
-          title={`Sixteenths Grid - Currently ${safeGridSettings.sixteenths ? 'ON' : 'OFF'}`}
-        >
-          <img
-            src="/icons/sixteenths-icon.svg"
-            alt="Sixteenths Grid"
-            style={{ width: '20px', height: '20px' }}
-          />
-        </button>
-
-        {/* Thirty-Second Grid Tool */}
-        <button
-          className={`tool-button ${safeGridSettings.thirtyseconds ? 'active' : ''}`}
-          onClick={() => safeGridSettingsChange({
-            ...safeGridSettings,
-            quarter: false,
-            eighths: false,
-            sixteenths: false,
-            thirtyseconds: !safeGridSettings.thirtyseconds,
-            sixtyfourths: false
-          })}
-          title={`Thirty-Second Grid - Currently ${safeGridSettings.thirtyseconds ? 'ON' : 'OFF'}`}
-        >
-          <img
-            src="/icons/thirtyseconds-icon.svg"
-            alt="Thirty-Second Grid"
-            style={{ width: '20px', height: '20px' }}
-          />
-        </button>
-
-        {/* Sixty-Fourths Grid Tool */}
-        <button
-          className={`tool-button ${safeGridSettings.sixtyfourths ? 'active' : ''}`}
-          onClick={() => safeGridSettingsChange({
-            ...safeGridSettings,
-            quarter: false,
-            eighths: false,
-            sixteenths: false,
-            thirtyseconds: false,
-            sixtyfourths: !safeGridSettings.sixtyfourths
-          })}
-          title={`Sixty-Fourths Grid - Currently ${safeGridSettings.sixtyfourths ? 'ON' : 'OFF'}`}
-        >
-          <img
-            src="/icons/64-icon.svg"
-            alt="Sixty-Fourths Grid"
-            style={{ width: '20px', height: '20px' }}
-          />
-        </button>
+              {/* Grid Type Options */}
+              {[
+                { value: 'none', label: 'No Grid', icon: '/icons/gimp-all/default-svg/gimp-grid-symbolic.svg' },
+                { value: 'quarter', label: 'Quarter Grid', icon: '/icons/quarter-new-icon.svg' },
+                { value: 'eighths', label: 'Eighths Grid', icon: '/icons/eighth-new-icon.svg' },
+                { value: 'sixteenths', label: 'Sixteenths Grid', icon: '/icons/sixteenths-icon.svg' },
+                { value: 'thirtyseconds', label: 'Thirty-Second Grid', icon: '/icons/thirtyseconds-icon.svg' },
+                { value: 'sixtyfourths', label: 'Sixty-Fourths Grid', icon: '/icons/64-icon.svg' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    handleGridTypeChange(option.value)
+                    setIsGridDropdownOpen(false)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    backgroundColor: getCurrentGridType() === option.value ? '#666' : 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    borderRadius: '2px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (getCurrentGridType() !== option.value) {
+                      e.currentTarget.style.backgroundColor = '#555'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (getCurrentGridType() !== option.value) {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }
+                  }}
+                  title={option.label}
+                >
+                  <img
+                    src={option.icon}
+                    alt={option.label}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Color Display - Single icon box split diagonally */}
-      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '8px', alignSelf: 'center' }}>
         <div
           style={{
             width: '36px',

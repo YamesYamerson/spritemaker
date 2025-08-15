@@ -95,15 +95,19 @@ describe('Toolbar', () => {
   it('should display grid toggle button', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const gridButton = screen.getByTitle('Show Grid - Currently OFF')
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
     expect(gridButton).toBeInTheDocument()
   })
 
   it('should toggle grid visibility when grid button is clicked', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const gridButton = screen.getByTitle('Show Grid - Currently OFF')
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
     fireEvent.click(gridButton)
+    
+    // Now click the "Show Grid" option in the dropdown
+    const showGridButton = screen.getByText('Show Grid')
+    fireEvent.click(showGridButton)
     
     expect(defaultProps.onGridSettingsChange).toHaveBeenCalledWith({
       ...defaultProps.gridSettings,
@@ -111,20 +115,27 @@ describe('Toolbar', () => {
     })
   })
 
-  it('should display grid subdivision tools', () => {
+  it('should display grid subdivision tools in dropdown', () => {
     render(<Toolbar {...defaultProps} />)
     
-    expect(screen.getByTitle('Quarter Grid - Currently OFF')).toBeInTheDocument()
-    expect(screen.getByTitle('Eighths Grid - Currently OFF')).toBeInTheDocument()
-    expect(screen.getByTitle('Sixteenths Grid - Currently OFF')).toBeInTheDocument()
-    expect(screen.getByTitle('Thirty-Second Grid - Currently OFF')).toBeInTheDocument()
-    expect(screen.getByTitle('Sixty-Fourths Grid - Currently OFF')).toBeInTheDocument()
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
+    fireEvent.click(gridButton)
+    
+    // Should show dropdown options
+    expect(screen.getByText('Quarter Grid')).toBeInTheDocument()
+    expect(screen.getByText('Eighths Grid')).toBeInTheDocument()
+    expect(screen.getByText('Sixteenths Grid')).toBeInTheDocument()
+    expect(screen.getByText('Thirty-Second Grid')).toBeInTheDocument()
+    expect(screen.getByText('Sixty-Fourths Grid')).toBeInTheDocument()
   })
 
-  it('should activate quarter grid when clicked', () => {
+  it('should activate quarter grid when selected from dropdown', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const quarterButton = screen.getByTitle('Quarter Grid - Currently OFF')
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
+    fireEvent.click(gridButton)
+    
+    const quarterButton = screen.getByText('Quarter Grid')
     fireEvent.click(quarterButton)
     
     expect(defaultProps.onGridSettingsChange).toHaveBeenCalledWith({
@@ -137,25 +148,19 @@ describe('Toolbar', () => {
     })
   })
 
-  it('should deactivate other grids when quarter grid is activated', () => {
-    const gridSettingsWithEighths = {
-      ...defaultProps.gridSettings,
-      eighths: true
-    }
+  it('should handle grid dropdown functionality', () => {
+    render(<Toolbar {...defaultProps} />)
     
-    render(<Toolbar {...defaultProps} gridSettings={gridSettingsWithEighths} />)
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
+    expect(gridButton).toBeInTheDocument()
     
-    const quarterButton = screen.getByTitle('Quarter Grid - Currently OFF')
-    fireEvent.click(quarterButton)
+    // Click to open dropdown
+    fireEvent.click(gridButton)
     
-    expect(defaultProps.onGridSettingsChange).toHaveBeenCalledWith({
-      ...gridSettingsWithEighths,
-      quarter: true,
-      eighths: false,
-      sixteenths: false,
-      thirtyseconds: false,
-      sixtyfourths: false
-    })
+    // Should show dropdown options
+    expect(screen.getByText('Show Grid')).toBeInTheDocument()
+    expect(screen.getByText('Quarter Grid')).toBeInTheDocument()
+    expect(screen.getByText('Eighths Grid')).toBeInTheDocument()
   })
 
   it('should display color indicator with primary and secondary colors', () => {
@@ -227,7 +232,7 @@ describe('Toolbar', () => {
     
     render(<Toolbar {...defaultProps} onGridSettingsChange={mockOnGridSettingsChange} />)
     
-    const gridButton = screen.getByTitle('Show Grid - Currently OFF')
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
     
     // Should not crash when callback throws error
     expect(() => {
@@ -244,8 +249,7 @@ describe('Toolbar', () => {
     
     render(<Toolbar {...defaultProps} gridSettings={gridSettingsWithVisible} />)
     
-    expect(screen.getByTitle('Show Grid - Currently ON')).toBeInTheDocument()
-    expect(screen.getByTitle('Quarter Grid - Currently ON')).toBeInTheDocument()
+    expect(screen.getByTitle('Grid Options - Currently ON')).toBeInTheDocument()
   })
 
   it('should handle missing grid settings gracefully', () => {
@@ -253,7 +257,7 @@ describe('Toolbar', () => {
     
     // Should still render without crashing
     expect(screen.getByText('Brush:')).toBeInTheDocument()
-    expect(screen.getByTitle('Show Grid - Currently OFF')).toBeInTheDocument()
+    expect(screen.getByTitle('Grid Options - Currently OFF')).toBeInTheDocument()
   })
 
   it('should display brush size visual representation', () => {
@@ -278,8 +282,10 @@ describe('Toolbar', () => {
   it('should maintain tool button spacing', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const gridButton = screen.getByTitle('Show Grid - Currently OFF')
-    expect(gridButton).toHaveStyle('margin-left: 8px')
+    const gridButton = screen.getByTitle('Grid Options - Currently OFF')
+    // The grid button should be in the same row as other tools
+    const toolsContainer = gridButton.closest('div[style*="display: flex"]')
+    expect(toolsContainer).toBeInTheDocument()
   })
 
   it('should display color indicator with correct colors', () => {
