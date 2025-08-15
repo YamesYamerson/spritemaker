@@ -80,6 +80,11 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     operation: 'copy' | 'cut'
   } | null>(null)
 
+  // State for move-selection tool
+  const [isMovingSelection, setIsMovingSelection] = useState(false)
+  const [moveStartPos, setMoveStartPos] = useState<{ x: number; y: number } | null>(null)
+  const [moveOffset, setMoveOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
   const activeLayer = layers.find(l => l.visible && l.active)
   const pixelSize = Math.max(1, Math.floor(512 / canvasSize))
 
@@ -329,9 +334,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
   }, [selection, handleCopy, handleCut, handlePaste])
 
-  // Global mouse move handler for select and lasso tools when cursor is outside canvas
+  // Global mouse move handler for select, lasso, and move-selection tools when cursor is outside canvas
   useEffect(() => {
-    if (!selection || (selectedTool !== 'select' && selectedTool !== 'lasso') || (!isSelecting && !isLassoing)) return
+    if (!selection || (selectedTool !== 'select' && selectedTool !== 'lasso' && selectedTool !== 'move-selection') || (!isSelecting && !isLassoing && !isMovingSelection)) return
 
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!canvasRef.current || !activeLayer) return
@@ -339,6 +344,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       const rect = canvasRef.current.getBoundingClientRect()
       const x = Math.floor((e.clientX - rect.left) / pixelSize)
       const y = Math.floor((e.clientY - rect.top) / pixelSize)
+      
+      // For move-selection tool, don't allow selection resizing - just track movement
+      if (selectedTool === 'move-selection' && isMovingSelection) {
+        // Don't modify the selection bounds, just track the movement
+        return
+      }
       
       // For select and lasso tools, we want to allow the selection to grow even when cursor is outside canvas
       // We'll clamp the visual display but allow the raw coordinates for selection bounds
@@ -389,13 +400,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
 
     const handleGlobalMouseUp = (_e: MouseEvent) => {
-      if (!selection || (selectedTool !== 'select' && selectedTool !== 'lasso') || (!isSelecting && !isLassoing)) return
+      if (!selection || (selectedTool !== 'select' && selectedTool !== 'lasso' && selectedTool !== 'move-selection') || (!isSelecting && !isLassoing && !isMovingSelection)) return
       
       // Complete the selection when mouse is released anywhere
       setIsDrawing(false)
       setLastPos(null)
       setIsSelecting(false) // Stop selecting
       setIsLassoing(false) // Stop lassoing
+      setIsMovingSelection(false) // Stop moving selection
     }
 
     document.addEventListener('mousemove', handleGlobalMouseMove)
@@ -404,7 +416,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       document.removeEventListener('mousemove', handleGlobalMouseMove)
       document.removeEventListener('mouseup', handleGlobalMouseUp)
     }
-  }, [selection, selectedTool, isSelecting, isLassoing, activeLayer, pixelSize, canvasSize])
+  }, [selection, selectedTool, isSelecting, isLassoing, isMovingSelection, activeLayer, pixelSize, canvasSize])
 
   // Initialize canvas when size changes
   useEffect(() => {
@@ -1028,6 +1040,11 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       setIsLassoing(false) // Stop any active lassoing
       setLassoPath([]) // Clear lasso path
     }
+    // For move-selection tool, don't clear selection - just start moving
+    else if (selectedTool === 'move-selection' && selection) {
+      // Don't clear selection, just start moving
+      // This prevents the selection from being resized or cleared
+    }
     // For other tools, clear selection if clicking outside the current selection area
     else if (selection) {
       const minX = Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x)
@@ -1110,6 +1127,21 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       setLassoPath([{ x: clampedX, y: clampedY }])
       // Don't create a drawing action - lasso is just visual
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else if (selectedTool === 'move-selection') {
+      // For move-selection tool, check if we have an active selection
+      if (selection) {
+        // Start moving the selection
+        setIsMovingSelection(true)
+        setMoveStartPos({ x, y })
+        setMoveOffset({ x: 0, y: 0 })
+        // Don't create a drawing action - moving is handled separately
+        setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+        // Don't set isDrawing to true for move-selection to prevent conflicts
+        setIsDrawing(false)
+      } else {
+        // No selection to move, don't do anything
+        setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+      }
     } else {
       // For drawing tools (pencil, eraser), draw the initial pixel
       if (selectedTool === 'pencil') {
@@ -1123,11 +1155,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !lastPos || !activeLayer) return
-    
     const rect = canvasRef.current!.getBoundingClientRect()
     const x = Math.floor((e.clientX - rect.left) / pixelSize)
     const y = Math.floor((e.clientY - rect.top) / pixelSize)
+    
+    // Handle move-selection tool first (it doesn't require isDrawing or lastPos)
+    if (isMovingSelection && moveStartPos && selection) {
+      const offsetX = x - moveStartPos.x
+      const offsetY = y - moveStartPos.y
+      setMoveOffset({ x: offsetX, y: offsetY })
+      return
+    }
+    
+    // For other tools, require isDrawing and lastPos
+    if (!isDrawing || !lastPos || !activeLayer) return
     
     // For non-select tools, require coordinates to be within bounds
     if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
@@ -1137,6 +1178,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       setShapePreview(prev => prev ? { ...prev, currentPos: { x, y } } : null)
       return
     }
+    
+
     
     // Handle drawing tools (pencil, eraser)
     if (currentDrawingAction.isActive && (selectedTool === 'pencil' || selectedTool === 'eraser')) {
@@ -1520,6 +1563,118 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     }
     
+    // Handle move-selection completion
+    if (isMovingSelection && moveStartPos && selection && (moveOffset.x !== 0 || moveOffset.y !== 0)) {
+      // Calculate the new position for the selection
+      const newStartX = Math.max(0, Math.min(canvasSize - 1, selection.startPos.x + moveOffset.x))
+      const newStartY = Math.max(0, Math.min(canvasSize - 1, selection.startPos.y + moveOffset.y))
+      
+      // Calculate the new end position
+      const currentEndX = selection.rawCurrentPos?.x ?? selection.currentPos.x
+      const currentEndY = selection.rawCurrentPos?.y ?? selection.currentPos.y
+      const newEndX = Math.max(0, Math.min(canvasSize - 1, currentEndX + moveOffset.x))
+      const newEndY = Math.max(0, Math.min(canvasSize - 1, currentEndY + moveOffset.y))
+      
+      // Create a new map for the moved pixels
+      const newPixels = new Map(pixels)
+      
+      // Remove pixels from the original selection area
+      const originalBounds = {
+        startX: Math.min(selection.startPos.x, currentEndX),
+        startY: Math.min(selection.startPos.y, currentEndY),
+        endX: Math.max(selection.startPos.x, currentEndX),
+        endY: Math.max(selection.startPos.y, currentEndY)
+      }
+      
+      // Remove original pixels
+      for (let x = originalBounds.startX; x <= originalBounds.endX; x++) {
+        for (let y = originalBounds.startY; y <= originalBounds.endY; y++) {
+          const key = `${x},${y}`
+          newPixels.delete(key)
+        }
+      }
+      
+      // Add pixels to the new location
+      selection.content.forEach((pixelData, relativeKey) => {
+        const [relativeX, relativeY] = relativeKey.split(',').map(Number)
+        const newX = newStartX + relativeX
+        const newY = newStartY + relativeY
+        
+        // Only add if within canvas bounds
+        if (newX >= 0 && newX < canvasSize && newY >= 0 && newY < canvasSize) {
+          const key = `${newX},${newY}`
+          newPixels.set(key, {
+            ...pixelData,
+            x: newX,
+            y: newY
+          })
+        }
+      })
+      
+      // Update pixels
+      setPixels(newPixels)
+      
+      // Create history entry for the move operation
+      const pixelChanges: Array<{
+        x: number
+        y: number
+        previousColor: Color
+        newColor: Color
+      }> = []
+      
+      // Calculate changes (removed pixels)
+      pixels.forEach((pixel, _key) => {
+        if (pixel.x >= originalBounds.startX && pixel.x <= originalBounds.endX &&
+            pixel.y >= originalBounds.startY && pixel.y <= originalBounds.endY) {
+          pixelChanges.push({
+            x: pixel.x,
+            y: pixel.y,
+            previousColor: pixel.color,
+            newColor: 'transparent'
+          })
+        }
+      })
+      
+      // Calculate changes (added pixels)
+      selection.content.forEach((pixelData, relativeKey) => {
+        const [relativeX, relativeY] = relativeKey.split(',').map(Number)
+        const newX = newStartX + relativeX
+        const newY = newStartY + relativeY
+        
+        if (newX >= 0 && newX < canvasSize && newY >= 0 && newY < canvasSize) {
+          pixelChanges.push({
+            x: newX,
+            y: newY,
+            previousColor: 'transparent',
+            newColor: pixelData.color
+          })
+        }
+      })
+      
+      if (pixelChanges.length > 0) {
+        const operation = historyManagerRef.current.createStrokeOperation(
+          'move-selection',
+          activeLayer!.id,
+          pixelChanges
+        )
+        historyManagerRef.current.pushOperation(operation)
+        dispatchHistoryChange()
+      }
+      
+      // Update selection position
+      setSelection(prev => prev ? {
+        ...prev,
+        startPos: { x: newStartX, y: newStartY },
+        currentPos: { x: newEndX, y: newEndY },
+        rawCurrentPos: { x: newEndX, y: newEndY }
+      } : null)
+    }
+    
+    // Reset move-selection state
+    setIsMovingSelection(false)
+    setMoveStartPos(null)
+    setMoveOffset({ x: 0, y: 0 })
+    
     // Reset drawing action
     setCurrentDrawingAction({
       tool: 'pencil',
@@ -1901,7 +2056,80 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       
       ctx.globalAlpha = 1.0
     }
-  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool, lassoPath, animationTime])
+    
+    // Draw move-selection preview
+    if (isMovingSelection && selection && (moveOffset.x !== 0 || moveOffset.y !== 0)) {
+      const { startPos, currentPos, rawCurrentPos, content } = selection
+      const actualCurrentPos = rawCurrentPos || currentPos
+      
+      // Calculate the preview position
+      const previewStartX = Math.max(0, Math.min(canvasSize - 1, startPos.x + moveOffset.x))
+      const previewStartY = Math.max(0, Math.min(canvasSize - 1, startPos.y + moveOffset.y))
+      const previewEndX = Math.max(0, Math.min(canvasSize - 1, actualCurrentPos.x + moveOffset.x))
+      const previewEndY = Math.max(0, Math.min(canvasSize - 1, actualCurrentPos.y + moveOffset.y))
+      
+      // Draw preview selection rectangle
+      ctx.strokeStyle = '#00ff00' // Green preview outline
+      ctx.lineWidth = 2
+      ctx.globalAlpha = 0.6
+      
+      const minX = Math.min(previewStartX, previewEndX) * pixelSize
+      const maxX = Math.max(previewStartX, previewEndX) * pixelSize
+      const minY = Math.min(previewStartY, previewEndY) * pixelSize
+      const maxY = Math.max(previewStartY, previewEndY) * pixelSize
+      
+      // Draw preview rectangle with dashed lines
+      if (ctx.setLineDash) {
+        const dashOffset = (animationTime * 0.5) % 10
+        ctx.setLineDash([5, 5])
+        ctx.lineDashOffset = dashOffset
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+        ctx.setLineDash([])
+        ctx.lineDashOffset = 0
+      } else {
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+      }
+      
+      // Draw preview of actual pixel content
+      if (content && content.size > 0) {
+        ctx.globalAlpha = 0.7 // Slightly more opaque for pixel preview
+        
+        // Draw each pixel in the preview location
+        content.forEach((pixelData, relativeKey) => {
+          const [relativeX, relativeY] = relativeKey.split(',').map(Number)
+          const previewX = previewStartX + relativeX
+          const previewY = previewStartY + relativeY
+          
+          // Only draw if within canvas bounds
+          if (previewX >= 0 && previewX < canvasSize && previewY >= 0 && previewY < canvasSize) {
+            const pixelX = previewX * pixelSize
+            const pixelY = previewY * pixelSize
+            
+            // Draw the pixel with its color
+            if (pixelData.color !== 'transparent') {
+              ctx.fillStyle = pixelData.color
+              ctx.fillRect(pixelX, pixelY, pixelSize, pixelSize)
+            }
+          }
+        })
+        
+        // Draw pixel grid for the preview
+        ctx.strokeStyle = '#00ff00'
+        ctx.lineWidth = 1
+        ctx.globalAlpha = 0.3
+        
+        for (let x = previewStartX; x <= previewEndX; x++) {
+          for (let y = previewStartY; y <= previewEndY; y++) {
+            const pixelX = x * pixelSize
+            const pixelY = y * pixelSize
+            ctx.strokeRect(pixelX, pixelY, pixelSize, pixelSize)
+          }
+        }
+      }
+      
+      ctx.globalAlpha = 1.0
+    }
+  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool, lassoPath, animationTime, isMovingSelection, moveOffset])
 
   return (
     <div className="canvas-container">
