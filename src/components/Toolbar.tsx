@@ -66,6 +66,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [isGridDropdownOpen, setIsGridDropdownOpen] = useState(false)
   const [isRectangleDropdownOpen, setIsRectangleDropdownOpen] = useState(false)
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false)
+  const [isBrushDropdownOpen, setIsBrushDropdownOpen] = useState(false)
   
   // State for tracking last selected variants
   const [lastRectangleVariant, setLastRectangleVariant] = useState<'rectangle-border' | 'rectangle-filled'>('rectangle-border')
@@ -74,6 +75,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const gridDropdownRef = useRef<HTMLDivElement>(null)
   const rectangleDropdownRef = useRef<HTMLDivElement>(null)
   const circleDropdownRef = useRef<HTMLDivElement>(null)
+  const brushDropdownRef = useRef<HTMLDivElement>(null)
 
   // Click outside handler to close dropdowns
   useEffect(() => {
@@ -86,6 +88,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
       }
       if (circleDropdownRef.current && !circleDropdownRef.current.contains(event.target as Node)) {
         setIsCircleDropdownOpen(false)
+      }
+      if (brushDropdownRef.current && !brushDropdownRef.current.contains(event.target as Node)) {
+        setIsBrushDropdownOpen(false)
       }
     }
 
@@ -159,119 +164,183 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
 
   const tools: { id: Tool; name: string; icon: string; iconType: 'svg' | 'png' }[] = [
+    { id: 'move-selection', name: 'Move Selection', icon: '/icons/move-selection.svg', iconType: 'svg' },
+    { id: 'select', name: 'Select', icon: '/icons/select.svg', iconType: 'svg' },
+    { id: 'lasso', name: 'Lasso', icon: '/icons/lasso.svg', iconType: 'svg' },
+    { id: 'brush-size', name: 'Brush Size', icon: '', iconType: 'svg' },
     { id: 'pencil', name: 'Pencil', icon: '/icons/pencil.svg', iconType: 'svg' },
     { id: 'eraser', name: 'Eraser', icon: '/icons/eraser.svg', iconType: 'svg' },
     { id: 'fill', name: 'Fill', icon: '/icons/fill.svg', iconType: 'svg' },
     { id: 'eyedropper', name: 'Eyedropper', icon: '/icons/eyedropper.png', iconType: 'png' },
-    { id: 'select', name: 'Select', icon: '/icons/select.svg', iconType: 'svg' },
-    { id: 'lasso', name: 'Lasso', icon: '/icons/lasso.svg', iconType: 'svg' },
-    { id: 'move-selection', name: 'Move Selection', icon: '/icons/move-selection.svg', iconType: 'svg' },
     { id: 'line', name: 'Line', icon: '/icons/line.svg', iconType: 'svg' }
   ]
 
   return (
     <div className="toolbar" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      {/* Brush Size Control - positioned to the left of tools */}
-      <div 
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '8px 12px',
-          border: '1px solid #666',
-          background: '#4a4a4a',
-          borderRadius: '4px',
-          height: '36px',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          position: 'relative'
-        }}
-        onClick={() => {
-          const select = document.getElementById('brush-size-select') as HTMLSelectElement;
-          if (select) {
-            select.focus();
-            select.click();
-          }
-        }}
-      >
-        <div style={{ fontSize: '10px', color: '#ccc', whiteSpace: 'nowrap' }}>Brush:</div>
-        
-        {/* Visual brush size representation */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '24px',
-          height: '24px',
-          position: 'relative'
-        }}>
-          {/* Subtle background grid for scale reference */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `
-              linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '6px 6px',
-            opacity: 0.2
-          }} />
-          
-          {/* Brush size circle */}
-          <div style={{
-            width: `${brushSize * 4}px`,
-            height: `${brushSize * 4}px`,
-            backgroundColor: '#000',
-            borderRadius: '50%',
-            border: '1px solid #fff',
-            position: 'relative',
-            zIndex: 1
-          }} />
-        </div>
-        
-        <div style={{ fontSize: '10px', color: '#ccc' }}>{brushSize}px</div>
-        
-        {/* Hidden select element */}
-        <select
-          id="brush-size-select"
-          value={brushSize}
-          onChange={(e) => safeBrushSizeChange(parseInt(e.target.value))}
-          style={{
-            position: 'absolute',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            opacity: 0,
-            cursor: 'pointer'
-          }}
-        >
-          {[1, 2, 3, 4].map(size => (
-            <option key={size} value={size}>{size}</option>
-          ))}
-        </select>
-      </div>
+
 
       {/* Tools and Grid Controls - All in one row */}
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        {tools.map(tool => (
-          <button
-            key={tool.id}
-            className={`tool-button ${selectedTool === tool.id || (tool.id === 'select' && hasActiveSelection) ? 'active' : ''}`}
-            onClick={() => safeToolSelect(tool.id)}
-            title={tool.name}
-          >
-            {tool.iconType === 'svg' ? (
-              <img src={tool.icon} alt={tool.name} style={{ width: '20px', height: '20px' }} />
-            ) : (
-              <img src={tool.icon} alt={tool.name} style={{ width: '20px', height: '20px' }} />
-            )}
-          </button>
-        ))}
+        {tools.map(tool => {
+          if (tool.id === 'brush-size') {
+            return (
+              <div
+                key={tool.id}
+                ref={brushDropdownRef}
+                style={{ 
+                  position: 'relative'
+                }}
+              >
+                <button
+                  className="tool-button"
+                  onClick={() => setIsBrushDropdownOpen(!isBrushDropdownOpen)}
+                  title={tool.name}
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {/* Create an SVG that matches the exact 20x20px dimensions of other tool icons */}
+                  <svg width="20" height="20" viewBox="0 0 20 20" style={{ display: 'block' }}>
+                    {/* Background grid for scale reference */}
+                    <defs>
+                      <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
+                        <path d="M 4 0 L 0 0 0 4" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>
+                      </pattern>
+                    </defs>
+                    <rect width="20" height="20" fill="url(#grid)" opacity="0.2"/>
+                    
+                    {/* Brush size circle - centered in the 20x20px area */}
+                    <circle
+                      cx="10"
+                      cy="10"
+                      r={Math.min(brushSize * 1.5, 8)}
+                      fill="#000"
+                      stroke="#fff"
+                      strokeWidth="1"
+                    />
+                  </svg>
+                  
+                  {/* Dropdown arrow indicator */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    right: '2px',
+                    width: '0',
+                    height: '0',
+                    borderLeft: '4px solid transparent',
+                    borderRight: '4px solid transparent',
+                    borderTop: '4px solid #ccc',
+                    fontSize: '8px'
+                  }} />
+                </button>
+
+                {/* Brush Size Options Dropdown */}
+                {isBrushDropdownOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '0',
+                    backgroundColor: '#4a4a4a',
+                    border: '1px solid #666',
+                    borderRadius: '4px',
+                    padding: '4px',
+                    zIndex: 9999,
+                    minWidth: '80px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    marginTop: '2px'
+                  }}>
+                    {[1, 2, 3, 4].map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          safeBrushSizeChange(size)
+                          setIsBrushDropdownOpen(false)
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          backgroundColor: brushSize === size ? '#666' : 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          borderRadius: '2px'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (brushSize !== size) {
+                            e.currentTarget.style.backgroundColor = '#555'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (brushSize !== size) {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }
+                        }}
+                        title={`${size}px`}
+                      >
+                        {/* Visual brush size representation */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '16px',
+                          height: '16px',
+                          position: 'relative'
+                        }}>
+                          {/* Subtle background grid for scale reference */}
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundImage: `
+                              linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
+                            `,
+                            backgroundSize: '3px 3px',
+                            opacity: 0.2
+                          }} />
+                          
+                          {/* Brush size circle */}
+                          <div style={{
+                            width: `${size * 2}px`,
+                            height: `${size * 2}px`,
+                            backgroundColor: '#000',
+                            borderRadius: '50%',
+                            border: '1px solid #fff',
+                            position: 'relative',
+                            zIndex: 1
+                          }} />
+                        </div>
+                        {size}px
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          
+          return (
+            <button
+              key={tool.id}
+              className={`tool-button ${selectedTool === tool.id || (tool.id === 'select' && hasActiveSelection) ? 'active' : ''}`}
+              onClick={() => safeToolSelect(tool.id)}
+              title={tool.name}
+            >
+              {tool.iconType === 'svg' ? (
+                <img src={tool.icon} alt={tool.name} style={{ width: '20px', height: '20px' }} />
+              ) : (
+                <img src={tool.icon} alt={tool.name} style={{ width: '20px', height: '20px' }} />
+              )}
+            </button>
+          );
+        })}
+        
+
         
         {/* Copy and Cut operations are handled via keyboard shortcuts (Cmd+C, Cmd+X) */}
         {/* No visible buttons needed - prevents layout shift */}
@@ -280,7 +349,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div 
           ref={rectangleDropdownRef}
           style={{ 
-            position: 'relative'
+            position: 'relative',
+            marginLeft: '8px'
           }}
         >
           <button

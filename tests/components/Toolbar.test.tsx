@@ -33,30 +33,32 @@ describe('Toolbar', () => {
 
   it('should render without crashing', () => {
     render(<Toolbar {...defaultProps} />)
-    expect(screen.getByText('Brush:')).toBeInTheDocument()
-    expect(screen.getByText('2px')).toBeInTheDocument()
+    expect(screen.getByTitle('Brush Size')).toBeInTheDocument()
+    expect(screen.getByTitle('Pencil')).toBeInTheDocument()
   })
 
   it('should display brush size control with correct styling', () => {
     render(<Toolbar {...defaultProps} />)
 
-    const brushControl = screen.getByText('Brush:').closest('div[style*="background"]')
+    const brushControl = screen.getByTitle('Brush Size')
     expect(brushControl).toBeInTheDocument()
-    expect(brushControl).toHaveStyle('background: rgb(74, 74, 74)')
-    expect(brushControl).toHaveStyle('border: 1px solid #666')
-    expect(brushControl).toHaveStyle('border-radius: 4px')
+    expect(brushControl).toHaveClass('tool-button')
+    expect(brushControl).toHaveAttribute('title', 'Brush Size')
   })
 
   it('should display current brush size', () => {
     render(<Toolbar {...defaultProps} />)
-    expect(screen.getByText('2px')).toBeInTheDocument()
+    expect(screen.getByTitle('Brush Size')).toBeInTheDocument()
   })
 
   it('should call onBrushSizeChange when brush size is changed', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const brushSizeSelect = screen.getByDisplayValue('2')
-    fireEvent.change(brushSizeSelect, { target: { value: '3' } })
+    const brushControl = screen.getByTitle('Brush Size')
+    fireEvent.click(brushControl)
+    
+    const brushSizeOption = screen.getByText('3px')
+    fireEvent.click(brushSizeOption)
     
     expect(defaultProps.onBrushSizeChange).toHaveBeenCalledWith(3)
   })
@@ -200,7 +202,7 @@ describe('Toolbar', () => {
   it('should maintain proper spacing and layout', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const toolbar = screen.getByText('Brush:').closest('.toolbar')
+    const toolbar = screen.getByTitle('Brush Size').closest('.toolbar')
     expect(toolbar).toBeInTheDocument()
     
     // Check that the spacer exists to maintain centering
@@ -215,11 +217,13 @@ describe('Toolbar', () => {
     
     render(<Toolbar {...defaultProps} onBrushSizeChange={mockOnBrushSizeChange} />)
     
-    const brushSizeSelect = screen.getByDisplayValue('2')
+    const brushControl = screen.getByTitle('Brush Size')
     
     // Should not crash when callback throws error
     expect(() => {
-      fireEvent.change(brushSizeSelect, { target: { value: '3' } })
+      fireEvent.click(brushControl)
+      const brushSizeOption = screen.getByText('3px')
+      fireEvent.click(brushSizeOption)
     }).not.toThrow()
   })
 
@@ -269,18 +273,18 @@ describe('Toolbar', () => {
     render(<Toolbar {...defaultProps} gridSettings={undefined as any} />)
     
     // Should still render without crashing
-    expect(screen.getByText('Brush:')).toBeInTheDocument()
+    expect(screen.getByTitle('Brush Size')).toBeInTheDocument()
     expect(screen.getByTitle('Grid Options - Currently OFF')).toBeInTheDocument()
   })
 
   it('should display brush size visual representation', () => {
     render(<Toolbar {...defaultProps} brushSize={3} />)
     
-    const brushSizeSelect = screen.getByDisplayValue('3')
-    expect(brushSizeSelect).toBeInTheDocument()
+    const brushControl = screen.getByTitle('Brush Size')
+    expect(brushControl).toBeInTheDocument()
     
-    // Check that the visual brush size circle exists
-    const brushCircle = screen.getByText('3px').parentElement?.querySelector('div[style*="border-radius: 50%"]')
+    // Check that the visual brush size circle exists (now an SVG circle)
+    const brushCircle = brushControl.querySelector('svg circle')
     expect(brushCircle).toBeInTheDocument()
   })
 
@@ -326,27 +330,32 @@ describe('Toolbar', () => {
   it('should maintain brush size control functionality', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const brushControl = screen.getByText('Brush:').closest('div[style*="background"]')
-    expect(brushControl).toHaveAttribute('style')
-    expect(brushControl?.getAttribute('style')).toContain('cursor: pointer')
+    const brushControl = screen.getByTitle('Brush Size')
+    expect(brushControl).toBeInTheDocument()
+    expect(brushControl).toHaveClass('tool-button')
     
-    // Clicking should focus the hidden select
-    fireEvent.click(brushControl!)
+    // Clicking should open the dropdown
+    fireEvent.click(brushControl)
     
-    const brushSizeSelect = screen.getByDisplayValue('2')
-    expect(brushSizeSelect).toBeInTheDocument()
+    // Should show the dropdown with brush size options
+    expect(screen.getByText('1px')).toBeInTheDocument()
+    expect(screen.getByText('2px')).toBeInTheDocument()
+    expect(screen.getByText('3px')).toBeInTheDocument()
+    expect(screen.getByText('4px')).toBeInTheDocument()
   })
 
   it('should display all brush size options', () => {
     render(<Toolbar {...defaultProps} />)
     
-    const brushSizeSelect = screen.getByDisplayValue('2')
-    expect(brushSizeSelect).toBeInTheDocument()
+    const brushControl = screen.getByTitle('Brush Size')
+    expect(brushControl).toBeInTheDocument()
     
-    // Check that all brush sizes are available
-    const options = Array.from(brushSizeSelect.querySelectorAll('option'))
-    expect(options).toHaveLength(4) // 1, 2, 3, 4
-    expect(options.map(opt => opt.value)).toEqual(['1', '2', '3', '4'])
+    // Check that all brush sizes are available by opening dropdown
+    fireEvent.click(brushControl)
+    expect(screen.getByText('1px')).toBeInTheDocument()
+    expect(screen.getByText('2px')).toBeInTheDocument()
+    expect(screen.getByText('3px')).toBeInTheDocument()
+    expect(screen.getByText('4px')).toBeInTheDocument()
   })
 
   describe('Edge Cases and Error Handling', () => {
@@ -367,7 +376,7 @@ describe('Toolbar', () => {
       render(<Toolbar {...minimalProps} />)
       
       expect(screen.getByTitle('Pencil')).toBeInTheDocument()
-      expect(screen.getByText('Brush:')).toBeInTheDocument()
+      expect(screen.getByTitle('Brush Size')).toBeInTheDocument()
     })
 
     it('should handle missing grid settings gracefully', () => {
@@ -523,7 +532,7 @@ describe('Toolbar', () => {
         rerender(<Toolbar {...defaultProps} brushSize={brushSize} />)
       }
       
-      expect(screen.getByText('Brush:')).toBeInTheDocument()
+      expect(screen.getByTitle('Brush Size')).toBeInTheDocument()
       // Should not crash under rapid brush size changes
     })
 
@@ -620,7 +629,7 @@ describe('Toolbar', () => {
         rerender(<Toolbar {...defaultProps} brushSize={(i % 4) + 1} />)
       }
       
-      expect(screen.getByText('Brush:')).toBeInTheDocument()
+      expect(screen.getByTitle('Brush Size')).toBeInTheDocument()
       // Should not crash under memory pressure
     })
 
