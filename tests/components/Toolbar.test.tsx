@@ -627,4 +627,118 @@ describe('Toolbar', () => {
       // Should not crash with concurrent updates
     })
   })
+
+  describe('Shape Tool State Persistence', () => {
+    it('should remember last selected rectangle variant when switching tools', () => {
+      render(<Toolbar {...defaultProps} />)
+      
+      // Open rectangle dropdown and select filled variant
+      const rectangleButton = screen.getByTitle('Rectangle Tool - Currently Border')
+      fireEvent.click(rectangleButton)
+      
+      const filledRectangleOption = screen.getByText('Filled Rectangle')
+      fireEvent.click(filledRectangleOption)
+      
+      // Verify tool selection was called
+      expect(defaultProps.onToolSelect).toHaveBeenCalledWith('rectangle-filled')
+      
+      // Switch to a different tool
+      const pencilButton = screen.getByTitle('Pencil')
+      fireEvent.click(pencilButton)
+      
+      // Now click rectangle tool again - should show filled variant
+      fireEvent.click(rectangleButton)
+      
+      // The rectangle tool should still show "Currently Filled" in its title
+      expect(screen.getByTitle('Rectangle Tool - Currently Filled')).toBeInTheDocument()
+    })
+
+    it('should remember last selected circle variant when switching tools', () => {
+      render(<Toolbar {...defaultProps} />)
+      
+      // Open circle dropdown and select filled variant
+      const circleButton = screen.getByTitle('Circle Tool - Currently Border')
+      fireEvent.click(circleButton)
+      
+      const filledCircleOption = screen.getByText('Filled Circle')
+      fireEvent.click(filledCircleOption)
+      
+      // Verify tool selection was called
+      expect(defaultProps.onToolSelect).toHaveBeenCalledWith('circle-filled')
+      
+      // Switch to a different tool
+      const pencilButton = screen.getByTitle('Pencil')
+      fireEvent.click(pencilButton)
+      
+      // Now click circle tool again - should show filled variant
+      fireEvent.click(circleButton)
+      
+      // The circle tool should still show "Currently Filled" in its title
+      expect(screen.getByTitle('Circle Tool - Currently Filled')).toBeInTheDocument()
+    })
+
+    it('should maintain separate state for rectangle and circle tools', () => {
+      render(<Toolbar {...defaultProps} />)
+      
+      // Set rectangle to filled
+      const rectangleButton = screen.getByTitle('Rectangle Tool - Currently Border')
+      fireEvent.click(rectangleButton)
+      const filledRectangleOption = screen.getByText('Filled Rectangle')
+      fireEvent.click(filledRectangleOption)
+      
+      // Set circle to border (keep default)
+      const circleButton = screen.getByTitle('Circle Tool - Currently Border')
+      fireEvent.click(circleButton)
+      const borderCircleOption = screen.getByText('Border Circle')
+      fireEvent.click(borderCircleOption)
+      
+      // Switch to pencil tool
+      const pencilButton = screen.getByTitle('Pencil')
+      fireEvent.click(pencilButton)
+      
+      // Rectangle should remember filled variant
+      expect(screen.getByTitle('Rectangle Tool - Currently Filled')).toBeInTheDocument()
+      
+      // Circle should remember border variant
+      expect(screen.getByTitle('Circle Tool - Currently Border')).toBeInTheDocument()
+    })
+
+    it('should update icon when variant changes', () => {
+      render(<Toolbar {...defaultProps} />)
+      
+      // Initially should show border icons
+      const rectangleButton = screen.getByTitle('Rectangle Tool - Currently Border')
+      const circleButton = screen.getByTitle('Circle Tool - Currently Border')
+      
+      expect(rectangleButton.querySelector('img')).toHaveAttribute('src', '/icons/rectangle-border.svg')
+      expect(circleButton.querySelector('img')).toHaveAttribute('src', '/icons/circle-border.svg')
+      
+      // Change rectangle to filled
+      fireEvent.click(rectangleButton)
+      const filledRectangleOption = screen.getByText('Filled Rectangle')
+      fireEvent.click(filledRectangleOption)
+      
+      // Rectangle icon should now be filled
+      expect(rectangleButton.querySelector('img')).toHaveAttribute('src', '/icons/rectangle-filled.svg')
+      
+      // Circle should still be border
+      expect(circleButton.querySelector('img')).toHaveAttribute('src', '/icons/circle-border.svg')
+    })
+
+    it('should persist state across component re-renders', () => {
+      const { rerender } = render(<Toolbar {...defaultProps} />)
+      
+      // Set rectangle to filled
+      const rectangleButton = screen.getByTitle('Rectangle Tool - Currently Border')
+      fireEvent.click(rectangleButton)
+      const filledRectangleOption = screen.getByText('Filled Rectangle')
+      fireEvent.click(filledRectangleOption)
+      
+      // Re-render component
+      rerender(<Toolbar {...defaultProps} />)
+      
+      // Rectangle should still remember filled variant
+      expect(screen.getByTitle('Rectangle Tool - Currently Filled')).toBeInTheDocument()
+    })
+  })
 })
