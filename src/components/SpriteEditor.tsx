@@ -12,6 +12,7 @@ interface SpriteEditorProps {
   layers: Layer[]
   onCanvasRef?: (ref: React.RefObject<HTMLCanvasElement>) => void
   onPrimaryColorChange?: (color: Color) => void
+  onPixelsChange?: (pixels: Map<string, PixelData>) => void
   gridSettings: GridSettings
 }
 
@@ -24,6 +25,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   layers,
   onCanvasRef,
   onPrimaryColorChange,
+  onPixelsChange,
   gridSettings
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -57,6 +59,13 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       onCanvasRef(canvasRef)
     }
   }, [onCanvasRef])
+
+  // Notify parent of pixel changes
+  useEffect(() => {
+    if (onPixelsChange) {
+      onPixelsChange(pixels)
+    }
+  }, [pixels, onPixelsChange])
 
   // Initialize canvas when size changes
   useEffect(() => {

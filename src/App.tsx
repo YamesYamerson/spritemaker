@@ -17,6 +17,7 @@ function App() {
     { id: 1, name: 'Layer 1', visible: true, active: true }
   ])
   const [canvasRef, setCanvasRef] = useState<React.RefObject<HTMLCanvasElement> | null>(null)
+  const [pixels, setPixels] = useState<Map<string, { x: number; y: number; color: string; layerId: number }>>(new Map())
   const [gridSettings, setGridSettings] = useState<GridSettings>({
     visible: false,
     color: '#333',
@@ -163,6 +164,7 @@ function App() {
               layers={layers}
               onCanvasRef={setCanvasRef}
               onPrimaryColorChange={setPrimaryColor}
+              onPixelsChange={setPixels}
               gridSettings={gridSettings}
             />
           </ErrorBoundary>
@@ -189,6 +191,8 @@ function App() {
         }}>
           <LayerPanel
             layers={layers}
+            pixels={pixels}
+            canvasSize={canvasSize}
             onNewLayer={handleNewLayer}
             onLayerToggle={handleLayerToggle}
             onLayerSelect={handleLayerSelect}
