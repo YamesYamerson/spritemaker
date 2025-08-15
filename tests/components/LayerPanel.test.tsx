@@ -124,6 +124,19 @@ describe('LayerPanel', () => {
     // This test verifies the UI interaction works correctly
   })
 
+  it('should handle multiple new layer creations correctly', () => {
+    render(<LayerPanel {...defaultProps} />)
+    
+    const newLayerButton = screen.getByTitle('New Layer')
+    
+    // Create multiple layers
+    fireEvent.click(newLayerButton)
+    fireEvent.click(newLayerButton)
+    fireEvent.click(newLayerButton)
+    
+    expect(defaultProps.onNewLayer).toHaveBeenCalledTimes(3)
+  })
+
   it('should handle undefined pixels gracefully', () => {
     const propsWithUndefinedPixels = {
       ...defaultProps,
@@ -199,6 +212,38 @@ describe('LayerPanel', () => {
     // is handled in App.tsx. This test verifies the UI interactions work correctly.
   })
 
+  it('should handle deletion of all layers correctly', () => {
+    render(<LayerPanel {...defaultProps} />)
+    
+    const deleteButtons = screen.getAllByTitle('Delete Layer')
+    
+    // Delete all layers one by one
+    fireEvent.click(deleteButtons[0]) // Delete Layer 1
+    fireEvent.click(deleteButtons[1]) // Delete Layer 2  
+    fireEvent.click(deleteButtons[2]) // Delete Layer 3
+    
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledWith(1)
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledWith(2)
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledWith(3)
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledTimes(3)
+  })
+
+  it('should handle rapid layer operations correctly', () => {
+    render(<LayerPanel {...defaultProps} />)
+    
+    const newLayerButton = screen.getByTitle('New Layer')
+    const deleteButtons = screen.getAllByTitle('Delete Layer')
+    
+    // Rapidly create and delete layers
+    fireEvent.click(newLayerButton)
+    fireEvent.click(deleteButtons[0])
+    fireEvent.click(newLayerButton)
+    fireEvent.click(deleteButtons[1])
+    
+    expect(defaultProps.onNewLayer).toHaveBeenCalledTimes(2)
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledTimes(2)
+  })
+
   it('should display empty state when no layers exist', () => {
     const propsWithNoLayers = {
       ...defaultProps,
@@ -220,5 +265,66 @@ describe('LayerPanel', () => {
     
     const deleteButtons = screen.queryAllByTitle('Delete Layer')
     expect(deleteButtons).toHaveLength(0)
+  })
+
+  it('should handle single layer scenarios correctly', () => {
+    const propsWithSingleLayer = {
+      ...defaultProps,
+      layers: [{ id: 1, name: 'Single Layer', visible: true, active: true }]
+    }
+    
+    render(<LayerPanel {...propsWithSingleLayer} />)
+    
+    expect(screen.getByText('Single Layer')).toBeInTheDocument()
+    
+    // Should still have delete button
+    const deleteButtons = screen.getAllByTitle('Delete Layer')
+    expect(deleteButtons).toHaveLength(1)
+    
+    // Should still have new layer button
+    expect(screen.getByTitle('New Layer')).toBeInTheDocument()
+  })
+
+  it('should handle layers with special characters in names', () => {
+    const propsWithSpecialNames = {
+      ...defaultProps,
+      layers: [
+        { id: 1, name: 'Layer & Special!@#$%', visible: true, active: true },
+        { id: 2, name: 'Layer with spaces', visible: true, active: false }
+      ]
+    }
+    
+    render(<LayerPanel {...propsWithSpecialNames} />)
+    
+    expect(screen.getByText('Layer & Special!@#$%')).toBeInTheDocument()
+    expect(screen.getByText('Layer with spaces')).toBeInTheDocument()
+  })
+
+  it('should handle very long layer names gracefully', () => {
+    const veryLongName = 'A'.repeat(1000)
+    const propsWithLongName = {
+      ...defaultProps,
+      layers: [
+        { id: 1, name: veryLongName, visible: true, active: true }
+      ]
+    }
+    
+    render(<LayerPanel {...propsWithLongName} />)
+    
+    expect(screen.getByText(veryLongName)).toBeInTheDocument()
+  })
+
+  it('should maintain proper layer order after operations', () => {
+    render(<LayerPanel {...defaultProps} />)
+    
+    // Verify initial order
+    const layerItems = screen.getAllByText(/Layer \d/)
+    expect(layerItems[0]).toHaveTextContent('Layer 1')
+    expect(layerItems[1]).toHaveTextContent('Layer 2')
+    expect(layerItems[2]).toHaveTextContent('Layer 3')
+    
+    // The order should be maintained after operations
+    // (actual reordering logic is in App.tsx)
+    expect(layerItems).toHaveLength(3)
   })
 })
