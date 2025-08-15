@@ -64,6 +64,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [isGridDropdownOpen, setIsGridDropdownOpen] = useState(false)
   const [isRectangleDropdownOpen, setIsRectangleDropdownOpen] = useState(false)
   const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false)
+  
+  // State for tracking last selected variants
+  const [lastRectangleVariant, setLastRectangleVariant] = useState<'rectangle-border' | 'rectangle-filled'>('rectangle-border')
+  const [lastCircleVariant, setLastCircleVariant] = useState<'circle-border' | 'circle-filled'>('circle-border')
+  
   const gridDropdownRef = useRef<HTMLDivElement>(null)
   const rectangleDropdownRef = useRef<HTMLDivElement>(null)
   const circleDropdownRef = useRef<HTMLDivElement>(null)
@@ -96,6 +101,21 @@ const Toolbar: React.FC<ToolbarProps> = ({
     if (safeGridSettings.thirtyseconds) return 'thirtyseconds'
     if (safeGridSettings.sixtyfourths) return 'sixtyfourths'
     return 'none'
+  }
+
+  // Helper functions to get current shape tool variants
+  const getCurrentRectangleTool = (): 'rectangle-border' | 'rectangle-filled' => {
+    if (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled') {
+      return selectedTool
+    }
+    return lastRectangleVariant
+  }
+
+  const getCurrentCircleTool = (): 'circle-border' | 'circle-filled' => {
+    if (selectedTool === 'circle-border' || selectedTool === 'circle-filled') {
+      return selectedTool
+    }
+    return lastCircleVariant
   }
 
   // Helper function to handle grid type change
@@ -134,21 +154,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     safeGridSettingsChange(newSettings)
   }
 
-  // Helper function to get current rectangle tool type
-  const getCurrentRectangleTool = (): Tool => {
-    if (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled') {
-      return selectedTool
-    }
-    return 'rectangle-border' // Default to border rectangle
-  }
 
-  // Helper function to get current circle tool type
-  const getCurrentCircleTool = (): Tool => {
-    if (selectedTool === 'circle-border' || selectedTool === 'circle-filled') {
-      return selectedTool
-    }
-    return 'circle-border' // Default to border circle
-  }
 
   const tools: { id: Tool; name: string; icon: string; iconType: 'svg' | 'png' }[] = [
     { id: 'pencil', name: 'Pencil', icon: '/icons/pencil.svg', iconType: 'svg' },
@@ -276,7 +282,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             style={{ position: 'relative' }}
           >
             <img
-              src="/icons/rectangle.png"
+              src={getCurrentRectangleTool() === 'rectangle-filled' ? '/icons/rectangle-filled.svg' : '/icons/rectangle-border.svg'}
               alt="Rectangle"
               style={{ width: '20px', height: '20px' }}
             />
@@ -311,13 +317,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
               marginTop: '2px'
             }}>
               {[
-                { value: 'rectangle-border', label: 'Border Rectangle', icon: '/icons/rectangle.png' },
-                { value: 'rectangle-filled', label: 'Filled Rectangle', icon: '/icons/rectangle.png' }
+                { value: 'rectangle-border', label: 'Border Rectangle', icon: '/icons/rectangle-border.svg' },
+                { value: 'rectangle-filled', label: 'Filled Rectangle', icon: '/icons/rectangle-filled.svg' }
               ].map((option) => (
                 <button
                   key={option.value}
                   onClick={() => {
                     safeToolSelect(option.value as Tool)
+                    setLastRectangleVariant(option.value as 'rectangle-border' | 'rectangle-filled')
                     setIsRectangleDropdownOpen(false)
                   }}
                   style={{
@@ -372,7 +379,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             style={{ position: 'relative' }}
           >
             <img
-              src="/icons/circle.png"
+              src={getCurrentCircleTool() === 'circle-filled' ? '/icons/circle-filled.svg' : '/icons/circle-border.svg'}
               alt="Circle"
               style={{ width: '20px', height: '20px' }}
             />
@@ -407,13 +414,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
               marginTop: '2px'
             }}>
               {[
-                { value: 'circle-border', label: 'Border Circle', icon: '/icons/circle.png' },
-                { value: 'circle-filled', label: 'Filled Circle', icon: '/icons/circle.png' }
+                { value: 'circle-border', label: 'Border Circle', icon: '/icons/circle-border.svg' },
+                { value: 'circle-filled', label: 'Filled Circle', icon: '/icons/circle-filled.svg' }
               ].map((option) => (
                 <button
                   key={option.value}
                   onClick={() => {
                     safeToolSelect(option.value as Tool)
+                    setLastCircleVariant(option.value as 'circle-border' | 'circle-filled')
                     setIsCircleDropdownOpen(false)
                   }}
                   style={{
