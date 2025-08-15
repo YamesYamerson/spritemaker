@@ -266,8 +266,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div 
           ref={rectangleDropdownRef}
           style={{ 
-            position: 'relative', 
-            marginLeft: '8px' 
+            position: 'relative'
           }}
         >
           <button
@@ -363,8 +362,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div 
           ref={circleDropdownRef}
           style={{ 
-            position: 'relative', 
-            marginLeft: '8px' 
+            position: 'relative'
           }}
         >
           <button
@@ -544,7 +542,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                   alt="Grid Visibility"
                   style={{ width: '16px', height: '16px' }}
                 />
-                {safeGridSettings.visible ? 'Hide Grid' : 'Show Grid'}
+                {safeGridSettings.visible ? 'Hide Grid' : 'Full Grid'}
               </button>
 
               <div style={{ 
@@ -556,11 +554,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
               {/* Grid Type Options */}
               {[
                 { value: 'none', label: 'No Grid', icon: '/icons/gimp-all/default-svg/gimp-grid-symbolic.svg' },
-                { value: 'quarter', label: 'Quarter Grid', icon: '/icons/quarter-new-icon.svg' },
-                { value: 'eighths', label: 'Eighths Grid', icon: '/icons/eighth-new-icon.svg' },
-                { value: 'sixteenths', label: 'Sixteenths Grid', icon: '/icons/sixteenths-icon.svg' },
-                { value: 'thirtyseconds', label: 'Thirty-Second Grid', icon: '/icons/thirtyseconds-icon.svg' },
-                { value: 'sixtyfourths', label: 'Sixty-Fourths Grid', icon: '/icons/64-icon.svg' }
+                { value: 'quarter', label: '1/4 Grid', icon: '/icons/quarter-new-icon.svg' },
+                { value: 'eighths', label: '1/8 Grid', icon: '/icons/eighth-new-icon.svg' },
+                { value: 'sixteenths', label: '1/16 Grid', icon: '/icons/sixteenths-icon.svg' },
+                { value: 'thirtyseconds', label: '1/32 Grid', icon: '/icons/thirtyseconds-icon.svg' },
+                { value: 'sixtyfourths', label: '1/64 Grid', icon: '/icons/64-icon.svg' }
               ].map((option) => (
                 <button
                   key={option.value}

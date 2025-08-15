@@ -68,8 +68,8 @@ describe('Toolbar', () => {
     expect(screen.getByTitle('Eraser')).toBeInTheDocument()
     expect(screen.getByTitle('Fill')).toBeInTheDocument()
     expect(screen.getByTitle('Eyedropper')).toBeInTheDocument()
-    expect(screen.getByTitle('Rectangle')).toBeInTheDocument()
-    expect(screen.getByTitle('Circle')).toBeInTheDocument()
+    expect(screen.getByTitle('Rectangle Tool - Currently Border')).toBeInTheDocument()
+    expect(screen.getByTitle('Circle Tool - Currently Border')).toBeInTheDocument()
     expect(screen.getByTitle('Line')).toBeInTheDocument()
   })
 
