@@ -70,7 +70,7 @@ describe('ColorPicker - Comprehensive Tests', () => {
 
     it('should display the primary color correctly', () => {
       render(<ColorPicker {...defaultProps} />);
-      const colorText = screen.getByText('II');
+      const colorText = screen.getByText('I');
       const colorDisplay = colorText.parentElement;
       // The inner div with the color is the second child (index 1) of the container
       const innerColorDiv = colorDisplay?.children[1] as HTMLElement;
@@ -81,9 +81,9 @@ describe('ColorPicker - Comprehensive Tests', () => {
     it('should display the secondary color correctly', () => {
       render(<ColorPicker {...defaultProps} />);
       
-      // Find the secondary color display (the "I" element)
-      const secondaryColorText = screen.getByText('I');
-      // The background color is on the div containing the "I" text, not its parent
+      // Find the secondary color display (the "II" element)
+      const secondaryColorText = screen.getByText('II');
+      // The background color is on the div containing the "II" text, not its parent
       const secondaryColorDisplay = secondaryColorText;
       
       // Check the inline style attribute directly
@@ -372,7 +372,7 @@ describe('ColorPicker - Comprehensive Tests', () => {
       render(<ColorPicker {...defaultProps} />);
       
       // Check that all color-related elements are consistent
-      const colorText = screen.getByText('II');
+      const colorText = screen.getByText('I');
       const colorDisplay = colorText.parentElement;
       const innerColorDiv = colorDisplay?.children[1] as HTMLElement;
       const hexInput = screen.getByDisplayValue('#ff0000');

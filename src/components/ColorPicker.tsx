@@ -8,6 +8,41 @@ import {
   isValidHexColor 
 } from '../utils/colorUtils'
 
+// Function to determine if text should be black or white based on background color
+const getContrastTextColor = (backgroundColor: string): string => {
+  // Handle transparent colors
+  if (backgroundColor === 'transparent') {
+    return '#000'
+  }
+  
+  // Handle rgba colors
+  if (backgroundColor.startsWith('rgba')) {
+    const rgbaMatch = backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
+    if (rgbaMatch) {
+      const r = parseInt(rgbaMatch[1])
+      const g = parseInt(rgbaMatch[2])
+      const b = parseInt(rgbaMatch[3])
+      // Calculate perceived brightness using luminance formula
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+      return luminance > 0.5 ? '#000' : '#fff'
+    }
+  }
+  
+  // Handle hex colors
+  if (backgroundColor.startsWith('#')) {
+    const hex = backgroundColor.slice(1)
+    const r = parseInt(hex.slice(0, 2), 16)
+    const g = parseInt(hex.slice(2, 4), 16)
+    const b = parseInt(hex.slice(4, 6), 16)
+    // Calculate perceived brightness using luminance formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return luminance > 0.5 ? '#000' : '#fff'
+  }
+  
+  // Default to black for unknown color formats
+  return '#000'
+}
+
 interface ColorPickerProps {
   primaryColor: Color
   onPrimaryColorChange: (color: Color) => void
@@ -357,33 +392,21 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             backgroundSize: '8px 8px',
             backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
           }} />
-          {/* Color with alpha - use HSV to RGB conversion for accurate colors */}
+          {/* Primary color display */}
           <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: (() => {
-              try {
-                const rgbColor = hsvToRgb(hue, saturation, value)
-                // Convert hex to RGB values for rgba
-                const r = parseInt(rgbColor.slice(1, 3), 16)
-                const g = parseInt(rgbColor.slice(3, 5), 16)
-                const b = parseInt(rgbColor.slice(5, 7), 16)
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`
-              } catch (error) {
-                console.warn('Failed to convert HSV to RGB for display:', error)
-                return `hsla(${hue}, ${saturation}%, ${Math.round((2 - saturation/100) * value/100 * 50)}%, ${alpha})`
-              }
-            })(),
+            backgroundColor: primaryColor,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#000',
+            color: getContrastTextColor(primaryColor),
             fontWeight: 'bold'
           }}>
-            II
+            I
           </div>
         </div>
         <div style={{
@@ -395,10 +418,10 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#000',
+          color: getContrastTextColor(secondaryColor),
           fontWeight: 'bold'
         }}>
-          I
+          II
         </div>
         <button
           onClick={handleSwapColors}
