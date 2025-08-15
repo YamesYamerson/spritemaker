@@ -107,11 +107,19 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   const handleCopy = useCallback(() => {
     if (!selection || !activeLayer) return
     
-    const bounds = {
+    const rawBounds = {
       startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
       startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
       endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
       endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+    }
+    
+    // Clamp bounds to canvas size - selection cannot extend beyond canvas boundaries
+    const bounds = {
+      startX: Math.max(0, rawBounds.startX),
+      startY: Math.max(0, rawBounds.startY),
+      endX: Math.min(canvasSize - 1, rawBounds.endX),
+      endY: Math.min(canvasSize - 1, rawBounds.endY)
     }
     
     // Use the stored selection content
@@ -135,17 +143,25 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
     historyManagerRef.current.pushOperation(operation)
     dispatchHistoryChange()
-  }, [selection, activeLayer])
+  }, [selection, activeLayer, canvasSize])
 
   // Cut selected pixels to clipboard
   const handleCut = useCallback(() => {
     if (!selection || !activeLayer) return
     
-    const bounds = {
+    const rawBounds = {
       startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
       startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
       endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
       endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+    }
+    
+    // Clamp bounds to canvas size - selection cannot extend beyond canvas boundaries
+    const bounds = {
+      startX: Math.max(0, rawBounds.startX),
+      startY: Math.max(0, rawBounds.startY),
+      endX: Math.min(canvasSize - 1, rawBounds.endX),
+      endY: Math.min(canvasSize - 1, rawBounds.endY)
     }
     
     // Use the stored selection content
@@ -197,7 +213,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     // Clear the selection after cutting
     setSelection(null)
-  }, [selection, pixels, activeLayer])
+  }, [selection, pixels, activeLayer, canvasSize])
 
   // Paste pixels from clipboard
   const handlePaste = useCallback(() => {
@@ -1279,12 +1295,22 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     // Handle selection completion
     if (selection && selectedTool === 'select') {
-      // Calculate current selection bounds using raw coordinates if available
-      const currentBounds = {
+      // Calculate current selection bounds using raw coordinates but clamp to canvas boundaries
+      const rawBounds = {
         startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
         startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
         endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
         endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+      }
+      
+      // Clamp bounds to canvas size - selection cannot extend beyond canvas boundaries
+      // For pixel selection, we want indices 0 to canvasSize-1, but for visual coverage
+      // we need to extend to canvasSize to fully cover the last pixel
+      const currentBounds = {
+        startX: Math.max(0, rawBounds.startX),
+        startY: Math.max(0, rawBounds.startY),
+        endX: Math.min(canvasSize - 1, rawBounds.endX),
+        endY: Math.min(canvasSize - 1, rawBounds.endY)
       }
       
       // Capture the actual pixel content within the selection
@@ -1764,15 +1790,18 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     // Draw selection rectangle
     if (selection) {
-      const { startPos, currentPos } = selection
+      const { startPos, currentPos, rawCurrentPos } = selection
       ctx.strokeStyle = '#1e3a8a' // Dark blue selection outline
       ctx.lineWidth = 2
       ctx.globalAlpha = 0.8
       
-      const minX = Math.min(startPos.x, currentPos.x) * pixelSize
-      const maxX = Math.max(startPos.x, currentPos.x) * pixelSize
-      const minY = Math.min(startPos.y, currentPos.y) * pixelSize
-      const maxY = Math.max(startPos.y, currentPos.y) * pixelSize
+      // Calculate bounds using raw coordinates but clamp to canvas boundaries for display
+      // For visual representation, we extend to canvasSize to fully cover the last pixel
+      const actualCurrentPos = rawCurrentPos || currentPos
+      const minX = Math.max(0, Math.min(startPos.x, actualCurrentPos.x)) * pixelSize
+      const maxX = Math.min(canvasSize, Math.max(startPos.x, actualCurrentPos.x)) * pixelSize
+      const minY = Math.max(0, Math.min(startPos.y, actualCurrentPos.y)) * pixelSize
+      const maxY = Math.min(canvasSize, Math.max(startPos.y, actualCurrentPos.y)) * pixelSize
       
       // Draw selection rectangle (dashed if supported, solid otherwise)
       if (ctx.setLineDash) {
