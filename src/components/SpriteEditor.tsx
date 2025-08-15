@@ -121,7 +121,6 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   const drawWithBrushPattern = useCallback((x: number, y: number, color: Color) => {
     if (!activeLayer || !currentDrawingAction.isActive) return
     
-    // Apply brush pattern efficiently
     applyBrushPattern(currentBrushPattern, x, y, (pixelX, pixelY) => {
       // Check bounds
       if (pixelX < 0 || pixelX >= canvasSize || pixelY < 0 || pixelY >= canvasSize) return
@@ -154,6 +153,43 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     })
   }, [pixels, activeLayer, currentDrawingAction.isActive, brushSize, canvasSize, currentBrushPattern])
+
+  // New method for drawing with brush patterns that takes drawing action as parameter
+  const drawWithBrushPatternWithAction = useCallback((x: number, y: number, color: Color, drawingAction: any) => {
+    if (!activeLayer || !drawingAction.isActive) return
+    
+    applyBrushPattern(currentBrushPattern, x, y, (pixelX, pixelY) => {
+      // Check bounds
+      if (pixelX < 0 || pixelX >= canvasSize || pixelY < 0 || pixelY >= canvasSize) return
+      
+      const key = `${pixelX},${pixelY}`
+      const existingPixel = pixels.get(key)
+      
+      // Only update if the pixel actually changes
+      if (color === 'transparent') {
+        if (existingPixel) {
+          setPixels(prevPixels => {
+            const newPixels = new Map(prevPixels)
+            newPixels.delete(key)
+            return newPixels
+          })
+        }
+      } else {
+        if (!existingPixel || existingPixel.color !== color) {
+          setPixels(prevPixels => {
+            const newPixels = new Map(prevPixels)
+            newPixels.set(key, {
+              x: pixelX,
+              y: pixelY,
+              color,
+              layerId: activeLayer.id
+            })
+            return newPixels
+          })
+        }
+      }
+    })
+  }, [pixels, activeLayer, brushSize, canvasSize, currentBrushPattern])
 
   // Apply a stroke operation (for undo/redo)
   const applyStrokeOperation = useCallback((operation: StrokeOperation, reverse: boolean = false) => {
@@ -324,13 +360,16 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setIsDrawing(true)
     setLastPos({ x, y })
     
-    // Start new drawing action
-    setCurrentDrawingAction({
+    // Create drawing action object locally
+    const drawingAction = {
       tool: selectedTool,
       startPos: { x, y },
       canvasStateBeforeDrawing: new Map(pixels), // Capture state before drawing
       isActive: true
-    })
+    }
+    
+    // Start new drawing action
+    setCurrentDrawingAction(drawingAction)
     
     // Handle immediate tools (fill, eyedropper) - these don't create drawing actions
     if (selectedTool === 'fill') {
@@ -348,9 +387,11 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     } else {
       // For drawing tools (pencil, eraser), draw the initial pixel
       if (selectedTool === 'pencil') {
-        drawWithBrushPattern(x, y, primaryColor)
+        // Pass the local drawing action instead of relying on state
+        drawWithBrushPatternWithAction(x, y, primaryColor, drawingAction)
       } else if (selectedTool === 'eraser') {
-        drawWithBrushPattern(x, y, 'transparent')
+        // Pass the local drawing action instead of relying on state
+        drawWithBrushPatternWithAction(x, y, 'transparent', drawingAction)
       }
     }
   }
