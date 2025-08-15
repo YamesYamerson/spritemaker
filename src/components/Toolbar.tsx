@@ -131,7 +131,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     { id: 'eyedropper', name: 'Eyedropper', icon: '/icons/eyedropper.png', iconType: 'png' },
     { id: 'rectangle', name: 'Rectangle', icon: '/icons/rectangle.png', iconType: 'png' },
     { id: 'circle', name: 'Circle', icon: '/icons/circle.png', iconType: 'png' },
-    { id: 'line', name: 'Line', icon: '/icons/line.png', iconType: 'png' }
+    { id: 'line', name: 'Line', icon: '/icons/line.svg', iconType: 'svg' }
   ]
 
   return (
