@@ -18,6 +18,7 @@ function App() {
   ])
   const [canvasRef, setCanvasRef] = useState<React.RefObject<HTMLCanvasElement> | null>(null)
   const [pixels, setPixels] = useState<Map<string, { x: number; y: number; color: string; layerId: number }>>(new Map())
+  const [hasActiveSelection, setHasActiveSelection] = useState(false)
   const [gridSettings, setGridSettings] = useState<GridSettings>({
     visible: false,
     color: '#333',
@@ -153,6 +154,7 @@ function App() {
             onBrushSizeChange={setBrushSize}
             gridSettings={gridSettings}
             onGridSettingsChange={setGridSettings}
+            hasActiveSelection={hasActiveSelection}
           />
         </div>
 
@@ -176,6 +178,7 @@ function App() {
               onCanvasRef={setCanvasRef}
               onPrimaryColorChange={setPrimaryColor}
               onPixelsChange={setPixels}
+              onSelectionChange={setHasActiveSelection}
               gridSettings={gridSettings}
             />
           </ErrorBoundary>

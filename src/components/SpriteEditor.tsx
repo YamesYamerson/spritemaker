@@ -13,19 +13,21 @@ interface SpriteEditorProps {
   onCanvasRef?: (ref: React.RefObject<HTMLCanvasElement>) => void
   onPrimaryColorChange?: (color: Color) => void
   onPixelsChange?: (pixels: Map<string, PixelData>) => void
+  onSelectionChange?: (hasSelection: boolean) => void
   gridSettings: GridSettings
 }
 
 const SpriteEditor: React.FC<SpriteEditorProps> = ({
   selectedTool,
   primaryColor,
-  secondaryColor,
+  secondaryColor: _secondaryColor,
   brushSize,
   canvasSize,
   layers,
   onCanvasRef,
   onPrimaryColorChange,
   onPixelsChange,
+  onSelectionChange,
   gridSettings
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -58,8 +60,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   const [selection, setSelection] = useState<{
     startPos: { x: number; y: number }
     currentPos: { x: number; y: number }
+    rawCurrentPos?: { x: number; y: number } // Store raw coordinates for bounds calculation
     isActive: boolean
     lastHistoryBounds?: { startX: number; startY: number; endX: number; endY: number }
+    content: Map<string, PixelData> // Store the actual pixel content within selection
+  } | null>(null)
+  
+  // Track if we're actively selecting (mouse down to mouse up)
+  const [isSelecting, setIsSelecting] = useState(false)
+
+  // State for clipboard operations
+  const [clipboard, setClipboard] = useState<{
+    pixels: Map<string, PixelData>
+    bounds: { startX: number; startY: number; endX: number; endY: number }
+    operation: 'copy' | 'cut'
   } | null>(null)
 
   const activeLayer = layers.find(l => l.visible && l.active)
@@ -75,11 +89,218 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
   }, [onCanvasRef])
 
+  // Notify parent of pixel changes
+  useEffect(() => {
+    if (onPixelsChange) {
+      onPixelsChange(pixels)
+    }
+  }, [pixels, onPixelsChange])
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(selection !== null)
+    }
+  }, [selection, onSelectionChange])
+
+  // Copy selected pixels to clipboard
+  const handleCopy = useCallback(() => {
+    if (!selection || !activeLayer) return
+    
+    const bounds = {
+      startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+      startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
+      endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+      endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+    }
+    
+    // Use the stored selection content
+    const selectedPixels = selection.content || new Map()
+    
+    setClipboard({
+      pixels: selectedPixels,
+      bounds,
+      operation: 'copy'
+    })
+    
+    // Create history entry for copy operation
+    const operation = historyManagerRef.current.createStrokeOperation(
+      'copy',
+      activeLayer.id,
+      [] // No pixel changes for copy
+    )
+    operation.metadata = {
+      selectionBounds: bounds,
+      selectionContent: selectedPixels
+    }
+    historyManagerRef.current.pushOperation(operation)
+    dispatchHistoryChange()
+  }, [selection, activeLayer])
+
+  // Cut selected pixels to clipboard
+  const handleCut = useCallback(() => {
+    if (!selection || !activeLayer) return
+    
+    const bounds = {
+      startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+      startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
+      endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+      endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+    }
+    
+    // Use the stored selection content
+    const selectedPixels = selection.content || new Map()
+    const pixelsToRemove: Array<{ x: number; y: number; color: Color }> = []
+    
+    // Convert relative coordinates back to absolute for removal
+    selectedPixels.forEach((pixel, _key) => {
+      const absoluteX = pixel.x + bounds.startX
+      const absoluteY = pixel.y + bounds.startY
+      pixelsToRemove.push({
+        x: absoluteX,
+        y: absoluteY,
+        color: pixel.color
+      })
+    })
+    
+    // Remove the pixels from the canvas
+    const newPixels = new Map(pixels)
+    pixelsToRemove.forEach(({ x, y }) => {
+      newPixels.delete(`${x},${y}`)
+    })
+    setPixels(newPixels)
+    
+    // Store in clipboard
+    setClipboard({
+      pixels: selectedPixels,
+      bounds,
+      operation: 'cut'
+    })
+    
+    // Create history entry for cut operation
+    const operation = historyManagerRef.current.createStrokeOperation(
+      'cut',
+      activeLayer.id,
+      pixelsToRemove.map(p => ({
+        x: p.x,
+        y: p.y,
+        previousColor: p.color,
+        newColor: 'transparent'
+      }))
+    )
+    operation.metadata = {
+      selectionBounds: bounds,
+      selectionContent: selectedPixels
+    }
+    historyManagerRef.current.pushOperation(operation)
+    dispatchHistoryChange()
+    
+    // Clear the selection after cutting
+    setSelection(null)
+  }, [selection, pixels, activeLayer])
+
+  // Paste pixels from clipboard
+  const handlePaste = useCallback(() => {
+    if (!clipboard || !activeLayer) return
+    
+    // Calculate paste position - center the pasted content on the canvas
+    const pasteBounds = clipboard.bounds
+    const pasteWidth = pasteBounds.endX - pasteBounds.startX + 1
+    const pasteHeight = pasteBounds.endY - pasteBounds.startY + 1
+    
+    // Center the paste on the canvas
+    const centerX = Math.floor(canvasSize / 2)
+    const centerY = Math.floor(canvasSize / 2)
+    const pasteStartX = centerX - Math.floor(pasteWidth / 2)
+    const pasteStartY = centerY - Math.floor(pasteHeight / 2)
+    
+    // Create new pixels map with pasted content
+    const newPixels = new Map(pixels)
+    const pixelsToAdd: Array<{ x: number; y: number; color: Color }> = []
+    
+    // Convert relative coordinates to absolute paste position
+    clipboard.pixels.forEach((pixel, _key) => {
+      const absoluteX = pasteStartX + pixel.x
+      const absoluteY = pasteStartY + pixel.y
+      
+      // Only add pixels that are within canvas bounds
+      if (absoluteX >= 0 && absoluteX < canvasSize && absoluteY >= 0 && absoluteY < canvasSize) {
+        pixelsToAdd.push({
+          x: absoluteX,
+          y: absoluteY,
+          color: pixel.color
+        })
+      }
+    })
+    
+    // Add the pasted pixels to the canvas
+    pixelsToAdd.forEach(({ x, y, color }) => {
+      if (color !== 'transparent') {
+        newPixels.set(`${x},${y}`, {
+          x,
+          y,
+          color,
+          layerId: activeLayer.id
+        })
+      }
+    })
+    
+    setPixels(newPixels)
+    
+    // Create history entry for paste operation
+    const operation = historyManagerRef.current.createStrokeOperation(
+      'paste',
+      activeLayer.id,
+      pixelsToAdd.map(p => ({
+        x: p.x,
+        y: p.y,
+        previousColor: pixels.get(`${p.x},${p.y}`)?.color || 'transparent',
+        newColor: p.color
+      }))
+    )
+    operation.metadata = {
+      pasteBounds: {
+        startX: pasteStartX,
+        startY: pasteStartY,
+        endX: pasteStartX + pasteWidth - 1,
+        endY: pasteStartY + pasteHeight - 1
+      },
+      originalClipboardBounds: clipboard.bounds,
+      clipboardContent: clipboard.pixels
+    }
+    historyManagerRef.current.pushOperation(operation)
+    dispatchHistoryChange()
+    
+    // Create a new selection around the pasted content
+    setSelection({
+      startPos: { x: pasteStartX, y: pasteStartY },
+      currentPos: { x: pasteStartX + pasteWidth - 1, y: pasteStartY + pasteHeight - 1 },
+      isActive: true,
+
+      content: clipboard.pixels,
+      lastHistoryBounds: undefined
+    })
+  }, [clipboard, activeLayer, pixels, canvasSize])
+
   // Handle keyboard events for selection management
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selection) {
         setSelection(null)
+      }
+      
+      // Copy, cut, and paste operations
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'c' && selection) {
+          e.preventDefault()
+          handleCopy()
+        } else if (e.key === 'x' && selection) {
+          e.preventDefault()
+          handleCut()
+        } else if (e.key === 'v' && clipboard) {
+          e.preventDefault()
+          handlePaste()
+        }
       }
     }
 
@@ -87,14 +308,49 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [selection])
+  }, [selection, handleCopy, handleCut, handlePaste])
 
-  // Notify parent of pixel changes
+  // Global mouse move handler for select tool when cursor is outside canvas
   useEffect(() => {
-    if (onPixelsChange) {
-      onPixelsChange(pixels)
+    if (!selection || selectedTool !== 'select' || !isSelecting) return
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!canvasRef.current || !activeLayer) return
+      
+      const rect = canvasRef.current.getBoundingClientRect()
+      const x = Math.floor((e.clientX - rect.left) / pixelSize)
+      const y = Math.floor((e.clientY - rect.top) / pixelSize)
+      
+      // For select tool, we want to allow the selection to grow even when cursor is outside canvas
+      // We'll clamp the visual display but allow the raw coordinates for selection bounds
+      const clampedX = Math.max(0, Math.min(x, canvasSize - 1))
+      const clampedY = Math.max(0, Math.min(y, canvasSize - 1))
+      
+      // Update selection with the raw coordinates (for bounds calculation) but clamped for display
+      setSelection(prev => prev ? { 
+        ...prev, 
+        currentPos: { x: clampedX, y: clampedY },
+        // Store the raw coordinates for proper bounds calculation
+        rawCurrentPos: { x, y }
+      } : null)
     }
-  }, [pixels, onPixelsChange])
+
+    const handleGlobalMouseUp = (_e: MouseEvent) => {
+      if (!selection || selectedTool !== 'select' || !isSelecting) return
+      
+      // Complete the selection when mouse is released anywhere
+      setIsDrawing(false)
+      setLastPos(null)
+      setIsSelecting(false) // Stop selecting
+    }
+
+    document.addEventListener('mousemove', handleGlobalMouseMove)
+    document.addEventListener('mouseup', handleGlobalMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
+    }
+  }, [selection, selectedTool, isSelecting, activeLayer, pixelSize, canvasSize])
 
   // Initialize canvas when size changes
   useEffect(() => {
@@ -111,59 +367,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   }, [canvasSize])
 
   // Clear selection when switching away from select tool
-  useEffect(() => {
-    if (selectedTool !== 'select' && selection) {
-      setSelection(null)
-    }
-  }, [selectedTool]) // Remove selection from dependencies to prevent infinite loop
+  // REMOVED: Selection now persists across tool changes
+  // useEffect(() => {
+  //   if (selectedTool !== 'select' && selection) {
+  //     setSelection(null)
+  //   }
+  // }, [selectedTool])
 
-  // Draw function with history tracking
-  const drawPixel = useCallback((x: number, y: number, color: Color, recordHistory: boolean = true) => {
-    if (!activeLayer) return
 
-    const key = `${x},${y}`
-    const previousColor = pixels.get(key)?.color || 'transparent'
-    const newPixels = new Map(pixels)
-    
-    if (color === 'transparent') {
-      newPixels.delete(key)
-    } else {
-      newPixels.set(key, {
-        x,
-        y,
-        color,
-        layerId: activeLayer.id
-      })
-    }
-    
-    // Force a new Map instance to ensure React detects the change
-    setPixels(new Map(newPixels))
-
-    // No need to record individual pixels anymore - we'll capture the entire state difference
-  }, [pixels, activeLayer])
-
-  // New method for drawing during active strokes (no history recording)
-  const drawPixelDuringStroke = useCallback((x: number, y: number, color: Color) => {
-    if (!activeLayer || !currentDrawingAction.isActive) return
-
-    const key = `${x},${y}`
-    const previousColor = pixels.get(key)?.color || 'transparent'
-    
-    // Update visual state immediately
-    const newPixels = new Map(pixels)
-    if (color === 'transparent') {
-      newPixels.delete(key)
-    } else {
-      newPixels.set(key, {
-        x,
-        y,
-        color,
-        layerId: activeLayer.id
-      })
-    }
-    
-    setPixels(newPixels)
-  }, [pixels, activeLayer, currentDrawingAction.isActive])
 
   // New method for drawing with brush patterns
   const drawWithBrushPattern = useCallback((x: number, y: number, color: Color) => {
@@ -460,12 +671,117 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         // Undo: clear the selection
         setSelection(null)
       } else {
-        // Redo: restore the selection
+        // Redo: restore the selection with content
+        const bounds = operation.metadata.selectionBounds
+        const content = operation.metadata.selectionContent || new Map()
+        setSelection({
+          startPos: { x: bounds.startX, y: bounds.startY },
+          currentPos: { x: bounds.endX, y: bounds.endY },
+          isActive: true,
+          content: content,
+          lastHistoryBounds: bounds
+        })
+      }
+      return
+    }
+    
+    // Handle copy operations
+    if (operation.tool === 'copy' && operation.metadata?.selectionBounds) {
+      if (reverse) {
+        // Undo: clear clipboard
+        setClipboard(null)
+      } else {
+        // Redo: restore clipboard (copy operations don't modify pixels)
+        // The clipboard state will be restored from the operation metadata
+      }
+      return
+    }
+    
+    // Handle cut operations
+    if (operation.tool === 'cut' && operation.metadata?.selectionBounds) {
+      if (reverse) {
+        // Undo: restore the cut pixels
+        const newPixels = new Map(pixels)
+        operation.pixels.forEach(({ x, y, previousColor }) => {
+          if (previousColor !== 'transparent') {
+            newPixels.set(`${x},${y}`, {
+              x,
+              y,
+              color: previousColor,
+              layerId: operation.layerId
+            })
+          }
+        })
+        setPixels(newPixels)
+        
+        // Restore selection
         const bounds = operation.metadata.selectionBounds
         setSelection({
           startPos: { x: bounds.startX, y: bounds.startY },
           currentPos: { x: bounds.endX, y: bounds.endY },
-          isActive: true
+          isActive: true,
+          content: new Map() // Initialize content for new selection
+        })
+      } else {
+        // Redo: re-apply the cut (pixels are already removed)
+        // Just restore the selection
+        const bounds = operation.metadata.selectionBounds
+        setSelection({
+          startPos: { x: bounds.startX, y: bounds.startY },
+          currentPos: { x: bounds.endX, y: bounds.endY },
+          isActive: true,
+          content: new Map() // Initialize content for new selection
+        })
+      }
+      return
+    }
+
+    // Handle paste operations
+    if (operation.tool === 'paste' && operation.metadata?.pasteBounds) {
+      if (reverse) {
+        // Undo: remove the pasted pixels
+        const newPixels = new Map(pixels)
+        operation.pixels.forEach(({ x, y, previousColor }) => {
+          if (previousColor === 'transparent') {
+            newPixels.delete(`${x},${y}`)
+          } else {
+            newPixels.set(`${x},${y}`, {
+              x,
+              y,
+              color: previousColor,
+              layerId: operation.layerId
+            })
+          }
+        })
+        setPixels(newPixels)
+        
+        // Clear selection
+        setSelection(null)
+      } else {
+        // Redo: re-apply the paste
+        const newPixels = new Map(pixels)
+        operation.pixels.forEach(({ x, y, newColor }) => {
+          if (newColor === 'transparent') {
+            newPixels.delete(`${x},${y}`)
+          } else {
+            newPixels.set(`${x},${y}`, {
+              x,
+              y,
+              color: newColor,
+              layerId: operation.layerId
+            })
+          }
+        })
+        setPixels(newPixels)
+        
+        // Restore selection around pasted content
+        const bounds = operation.metadata.pasteBounds
+        setSelection({
+          startPos: { x: bounds.startX, y: bounds.startY },
+          currentPos: { x: bounds.endX, y: bounds.endY },
+          isActive: true,
+          content: operation.metadata.clipboardContent || new Map(),
+          lastHistoryBounds: undefined
         })
       }
       return
@@ -629,16 +945,29 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     if (!activeLayer) return
     
     const rect = canvasRef.current!.getBoundingClientRect()
-    const rawX = e.clientX - rect.left
-    const rawY = e.clientY - rect.top
-    const x = Math.floor(rawX / pixelSize)
-    const y = Math.floor(rawY / pixelSize)
+    const x = Math.floor((e.clientX - rect.left) / pixelSize)
+    const y = Math.floor((e.clientY - rect.top) / pixelSize)
     
-    if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
+    // For select tool, allow starting outside canvas boundaries
+    // For other tools, require coordinates to be within bounds
+    if (selectedTool !== 'select' && (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize)) return
     
-    // Clear existing selection if clicking outside of it (unless we're using the select tool)
-    if (selection && selectedTool !== 'select') {
+          // For select tool, always clear existing selection when starting a new one
+    if (selectedTool === 'select' && selection) {
       setSelection(null)
+      setIsSelecting(false) // Stop any active selecting
+    }
+    // For other tools, clear selection if clicking outside the current selection area
+    else if (selection) {
+      const minX = Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x)
+      const maxX = Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x)
+      const minY = Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+      const maxY = Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+      
+      if (x < minX || x > maxX || y < minY || y > maxY) {
+        setSelection(null)
+        setIsSelecting(false) // Stop any active selecting
+      }
     }
     
     setIsDrawing(true)
@@ -679,12 +1008,18 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
     } else if (selectedTool === 'select') {
       // For select tool, start tracking the selection rectangle
+      // Clamp coordinates to canvas boundaries for selection tool
+      const clampedX = Math.max(0, Math.min(x, canvasSize - 1))
+      const clampedY = Math.max(0, Math.min(y, canvasSize - 1))
       setSelection({
-        startPos: { x, y },
-        currentPos: { x, y },
+        startPos: { x: clampedX, y: clampedY },
+        currentPos: { x: clampedX, y: clampedY },
+        rawCurrentPos: { x: clampedX, y: clampedY }, // Initialize raw coordinates
         isActive: true,
+        content: new Map(), // Initialize content for new selection
         lastHistoryBounds: undefined // No history entry yet
       })
+      setIsSelecting(true) // Start actively selecting
       // Don't create a drawing action - selection is just visual
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
     } else {
@@ -706,17 +1041,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     const x = Math.floor((e.clientX - rect.left) / pixelSize)
     const y = Math.floor((e.clientY - rect.top) / pixelSize)
     
+    // For non-select tools, require coordinates to be within bounds
     if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
     
     // Handle shape preview updates
     if (shapePreview && (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled' || selectedTool === 'circle-border' || selectedTool === 'circle-filled' || selectedTool === 'line')) {
       setShapePreview(prev => prev ? { ...prev, currentPos: { x, y } } : null)
-      return
-    }
-    
-    // Handle selection updates
-    if (selection && selectedTool === 'select') {
-      setSelection(prev => prev ? { ...prev, currentPos: { x, y } } : null)
       return
     }
     
@@ -851,8 +1181,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }> = []
         
         // Check all pixels in the final state
-        finalPixels.forEach((pixel, key) => {
-          const initialPixel = initialPixels.get(key)
+        finalPixels.forEach((pixel, _key) => {
+          const initialPixel = initialPixels.get(_key)
           const initialColor = initialPixel ? initialPixel.color : 'transparent'
           
           if (initialColor !== pixel.color) {
@@ -866,8 +1196,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         })
         
         // Check pixels that were in initial state but not in final state (deleted pixels)
-        initialPixels.forEach((pixel, key) => {
-          if (!finalPixels.has(key)) {
+        initialPixels.forEach((pixel, _key) => {
+          if (!finalPixels.has(_key)) {
             pixelChanges.push({
               x: pixel.x,
               y: pixel.y,
@@ -885,6 +1215,61 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
           )
           historyManagerRef.current.pushOperation(operation)
           dispatchHistoryChange() // Dispatch history change event
+          
+          // If there's an active selection and we drew within it, update selection history
+          if (selection && activeLayer) {
+            const bounds = {
+              startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+              startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
+              endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+              endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+            }
+            
+            // Check if any pixels were drawn within the selection bounds
+            const hasDrawnInSelection = pixelChanges.some(({ x, y }) => 
+              x >= bounds.startX && x < bounds.endX + 1 &&
+              y >= bounds.startY && y < bounds.endY + 1
+            )
+            
+            if (hasDrawnInSelection) {
+              // Capture the new content within the selection after drawing
+              const newSelectionContent = new Map<string, PixelData>()
+              pixels.forEach((pixel, _key) => {
+                if (pixel.x >= bounds.startX && pixel.x < bounds.endX + 1 &&
+                    pixel.y >= bounds.startY && pixel.y < bounds.endY + 1 &&
+                    pixel.layerId === activeLayer.id) {
+                  // Store relative coordinates for the selection content
+                  const relativeX = pixel.x - bounds.startX
+                  const relativeY = pixel.y - bounds.startY
+                  const relativeKey = `${relativeX},${relativeY}`
+                  newSelectionContent.set(relativeKey, {
+                    ...pixel,
+                    x: relativeX,
+                    y: relativeY
+                  })
+                }
+              })
+              
+              // Create a new selection history entry to reflect the updated content
+              const selectionOperation = historyManagerRef.current.createStrokeOperation(
+                'select',
+                activeLayer.id,
+                [] // No pixel changes for selections
+              )
+              selectionOperation.metadata = {
+                selectionBounds: bounds,
+                selectionContent: newSelectionContent
+              }
+              historyManagerRef.current.pushOperation(selectionOperation)
+              dispatchHistoryChange()
+              
+              // Update the selection with new content
+              setSelection(prev => prev ? {
+                ...prev,
+                content: newSelectionContent
+              } : null)
+            }
+          }
         }
       }
       
@@ -894,13 +1279,31 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     // Handle selection completion
     if (selection && selectedTool === 'select') {
-      // Calculate current selection bounds
+      // Calculate current selection bounds using raw coordinates if available
       const currentBounds = {
-        startX: Math.min(selection.startPos.x, selection.currentPos.x),
-        startY: Math.min(selection.startPos.y, selection.currentPos.y),
-        endX: Math.max(selection.startPos.x, selection.currentPos.x),
-        endY: Math.max(selection.startPos.y, selection.currentPos.y)
+        startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+        startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
+        endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+        endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
       }
+      
+      // Capture the actual pixel content within the selection
+      const selectionContent = new Map<string, PixelData>()
+      pixels.forEach((pixel, _key) => {
+        if (pixel.x >= currentBounds.startX && pixel.x < currentBounds.endX + 1 &&
+            pixel.y >= currentBounds.startY && pixel.y < currentBounds.endY + 1 &&
+            pixel.layerId === activeLayer!.id) {
+          // Store relative coordinates for the selection content
+          const relativeX = pixel.x - currentBounds.startX
+          const relativeY = pixel.y - currentBounds.startY
+          const relativeKey = `${relativeX},${relativeY}`
+          selectionContent.set(relativeKey, {
+            ...pixel,
+            x: relativeX,
+            y: relativeY
+          })
+        }
+      })
       
       // Only create history entry if the selection area has actually changed
       const hasSelectionChanged = !selection.lastHistoryBounds || 
@@ -916,18 +1319,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
           [] // No pixel changes for selections
         )
         
-        // Store the selection bounds in metadata for history display
+        // Store the selection bounds and content in metadata for history display
         operation.metadata = {
-          selectionBounds: currentBounds
+          selectionBounds: currentBounds,
+          selectionContent: selectionContent
         }
         
         historyManagerRef.current.pushOperation(operation)
         dispatchHistoryChange()
         
-        // Update the last history bounds to prevent duplicate entries
+        // Update the selection with new bounds and content
         setSelection(prev => prev ? {
           ...prev,
-          lastHistoryBounds: currentBounds
+          lastHistoryBounds: currentBounds,
+          content: selectionContent
         } : null)
       }
       
@@ -950,8 +1355,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }> = []
       
       // Check all pixels in the final state
-      finalPixels.forEach((pixel, key) => {
-        const initialPixel = initialPixels.get(key)
+      finalPixels.forEach((pixel, _key) => {
+        const initialPixel = initialPixels.get(_key)
         const initialColor = initialPixel ? initialPixel.color : 'transparent'
         
         if (initialColor !== pixel.color) {
@@ -965,8 +1370,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
       
       // Check pixels that were in initial state but not in final state (deleted pixels)
-      initialPixels.forEach((pixel, key) => {
-        if (!finalPixels.has(key)) {
+      initialPixels.forEach((pixel, _key) => {
+        if (!finalPixels.has(_key)) {
           pixelChanges.push({
             x: pixel.x,
             y: pixel.y,
@@ -984,6 +1389,61 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         )
         historyManagerRef.current.pushOperation(operation)
         dispatchHistoryChange() // Dispatch history change event
+        
+        // If there's an active selection and we drew within it, update selection history
+        if (selection && activeLayer) {
+          const bounds = {
+            startX: Math.min(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+            startY: Math.min(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y),
+            endX: Math.max(selection.startPos.x, selection.rawCurrentPos?.x ?? selection.currentPos.x),
+            endY: Math.max(selection.startPos.y, selection.rawCurrentPos?.y ?? selection.currentPos.y)
+          }
+          
+          // Check if any pixels were drawn within the selection bounds
+          const hasDrawnInSelection = pixelChanges.some(({ x, y }) => 
+            x >= bounds.startX && x < bounds.endX + 1 &&
+            y >= bounds.startY && y < bounds.endY + 1
+          )
+          
+          if (hasDrawnInSelection) {
+            // Capture the new content within the selection after drawing
+            const newSelectionContent = new Map<string, PixelData>()
+            pixels.forEach((pixel, _key) => {
+              if (pixel.x >= bounds.startX && pixel.x < bounds.endX + 1 &&
+                  pixel.y >= bounds.startY && pixel.y < bounds.endY + 1 &&
+                  pixel.layerId === activeLayer.id) {
+                // Store relative coordinates for the selection content
+                const relativeX = pixel.x - bounds.startX
+                const relativeY = pixel.y - bounds.startY
+                const relativeKey = `${relativeX},${relativeY}`
+                newSelectionContent.set(relativeKey, {
+                  ...pixel,
+                  x: relativeX,
+                  y: relativeY
+                })
+              }
+            })
+            
+            // Create a new selection history entry to reflect the updated content
+            const selectionOperation = historyManagerRef.current.createStrokeOperation(
+              'select',
+              activeLayer.id,
+              [] // No pixel changes for selections
+            )
+            selectionOperation.metadata = {
+              selectionBounds: bounds,
+              selectionContent: newSelectionContent
+            }
+            historyManagerRef.current.pushOperation(selectionOperation)
+            dispatchHistoryChange()
+            
+            // Update the selection with new content
+            setSelection(prev => prev ? {
+              ...prev,
+              content: newSelectionContent
+            } : null)
+          }
+        }
       }
     }
     
@@ -1303,7 +1763,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
     
     // Draw selection rectangle
-    if (selection && selectedTool === 'select') {
+    if (selection) {
       const { startPos, currentPos } = selection
       ctx.strokeStyle = '#1e3a8a' // Dark blue selection outline
       ctx.lineWidth = 2

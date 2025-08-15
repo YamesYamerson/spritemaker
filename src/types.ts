@@ -1,4 +1,4 @@
-export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select'
+export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select' | 'copy' | 'cut' | 'paste'
 
 export type Color = string
 
@@ -35,6 +35,30 @@ export interface StrokeOperation {
       endX: number
       endY: number
     }
+    selectionContent?: Map<string, {
+      x: number
+      y: number
+      color: Color
+      layerId: number
+    }>
+    pasteBounds?: {
+      startX: number
+      startY: number
+      endX: number
+      endY: number
+    }
+    originalClipboardBounds?: {
+      startX: number
+      startY: number
+      endX: number
+      endY: number
+    }
+    clipboardContent?: Map<string, {
+      x: number
+      y: number
+      color: Color
+      layerId: number
+    }>
   }
 }
 

@@ -12,6 +12,7 @@ interface ToolbarProps {
   onBrushSizeChange: (size: number) => void
   gridSettings: GridSettings
   onGridSettingsChange: (settings: GridSettings) => void
+  hasActiveSelection?: boolean
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -22,7 +23,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   brushSize,
   onBrushSizeChange,
   gridSettings,
-  onGridSettingsChange
+  onGridSettingsChange,
+  hasActiveSelection = false
 }) => {
   // Safe grid settings with defaults
   const safeGridSettings = gridSettings || {
@@ -257,7 +259,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         {tools.map(tool => (
           <button
             key={tool.id}
-            className={`tool-button ${selectedTool === tool.id ? 'active' : ''}`}
+            className={`tool-button ${selectedTool === tool.id || (tool.id === 'select' && hasActiveSelection) ? 'active' : ''}`}
             onClick={() => safeToolSelect(tool.id)}
             title={tool.name}
           >
@@ -268,6 +270,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
             )}
           </button>
         ))}
+        
+        {/* Copy and Cut operations are handled via keyboard shortcuts (Cmd+C, Cmd+X) */}
+        {/* No visible buttons needed - prevents layout shift */}
         
         {/* Rectangle Tool Dropdown */}
         <div 
