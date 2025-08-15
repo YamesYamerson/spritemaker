@@ -195,28 +195,24 @@ const Toolbar: React.FC<ToolbarProps> = ({
                   className="tool-button"
                   onClick={() => setIsBrushDropdownOpen(!isBrushDropdownOpen)}
                   title={tool.name}
-                  style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ position: 'relative' }}
                 >
-                  {/* Create an SVG that matches the exact 20x20px dimensions of other tool icons */}
-                  <svg width="20" height="20" viewBox="0 0 20 20" style={{ display: 'block' }}>
-                    {/* Background grid for scale reference */}
-                    <defs>
-                      <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
-                        <path d="M 4 0 L 0 0 0 4" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>
-                      </pattern>
-                    </defs>
-                    <rect width="20" height="20" fill="url(#grid)" opacity="0.2"/>
-                    
-                    {/* Brush size circle - centered in the 20x20px area */}
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r={Math.min(brushSize * 1.5, 8)}
-                      fill="#000"
-                      stroke="#fff"
-                      strokeWidth="1"
-                    />
-                  </svg>
+                  {/* Use an img element with data URL to match the exact structure of other tool buttons */}
+                  <img 
+                    src={`data:image/svg+xml;base64,${btoa(`
+                      <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <pattern id="grid" width="4" height="4" patternUnits="userSpaceOnUse">
+                            <path d="M 4 0 L 0 0 0 4" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                          </pattern>
+                        </defs>
+                        <rect width="20" height="20" fill="url(#grid)" opacity="0.2"/>
+                        <circle cx="10" cy="10" r="${Math.min(brushSize * 1.5, 8)}" fill="#000" stroke="#fff" stroke-width="1"/>
+                      </svg>
+                    `)}`}
+                    alt="Brush Size"
+                    style={{ width: '20px', height: '20px' }}
+                  />
                   
                   {/* Dropdown arrow indicator */}
                   <div style={{
