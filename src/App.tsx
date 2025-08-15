@@ -162,6 +162,7 @@ function App() {
               canvasSize={canvasSize}
               layers={layers}
               onCanvasRef={setCanvasRef}
+              onPrimaryColorChange={setPrimaryColor}
               gridSettings={gridSettings}
             />
           </ErrorBoundary>

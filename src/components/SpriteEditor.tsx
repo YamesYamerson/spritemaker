@@ -11,6 +11,7 @@ interface SpriteEditorProps {
   canvasSize: number
   layers: Layer[]
   onCanvasRef?: (ref: React.RefObject<HTMLCanvasElement>) => void
+  onPrimaryColorChange?: (color: Color) => void
   gridSettings: GridSettings
 }
 
@@ -22,6 +23,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   canvasSize,
   layers,
   onCanvasRef,
+  onPrimaryColorChange,
   gridSettings
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -379,8 +381,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
     } else if (selectedTool === 'eyedropper') {
       const color = getColorAt(x, y)
-      if (color !== 'transparent') {
-        // Update primary color (you might want to add a callback for this)
+      if (color !== 'transparent' && onPrimaryColorChange) {
+        onPrimaryColorChange(color)
       }
       // Eyedropper doesn't create a drawing action, so reset
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
