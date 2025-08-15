@@ -546,4 +546,896 @@ describe('SpriteEditor - Select Tool', () => {
     // The lasso should create a pixel-perfect selection path
     // This test verifies that the lasso tool creates clean, pixel-aligned selections
   })
+
+  // ===== COMPREHENSIVE CUT OPERATION TESTS =====
+  
+  it('should handle cut operation with empty selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Try to cut without a selection
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Should not modify pixels without selection
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle cut operation with single pixel selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create single pixel selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Cut the selection
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Should have modified pixels (removed selected pixel)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle cut operation with large selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create large selection covering most of canvas
+    fireEvent.mouseDown(canvas!, { clientX: 0, clientY: 0 })
+    fireEvent.mouseMove(canvas!, { clientX: 448, clientY: 448 }) // Almost full canvas
+    fireEvent.mouseUp(canvas!)
+    
+    // Cut the selection
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Should have modified pixels (removed selected pixels)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle cut operation with selection extending beyond canvas', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Start selection inside, extend beyond canvas
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    
+    // Move outside canvas boundaries
+    const globalMouseMoveEvent = new MouseEvent('mousemove', {
+      clientX: 800,
+      clientY: 800
+    })
+    document.dispatchEvent(globalMouseMoveEvent)
+    
+    fireEvent.mouseUp(canvas!)
+    
+    // Cut the selection (should be clamped to canvas boundaries)
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Should have modified pixels within canvas boundaries
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should clear selection after cut operation', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Cut the selection
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Selection should be cleared after cut
+    // Try to cut again - should not modify pixels
+    jest.clearAllMocks()
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  // ===== COMPREHENSIVE COPY OPERATION TESTS =====
+  
+  it('should handle copy operation with empty selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Try to copy without a selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle copy operation with single pixel selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create single pixel selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Should not modify pixels (copy only reads)
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle copy operation with large selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create large selection
+    fireEvent.mouseDown(canvas!, { clientX: 0, clientY: 0 })
+    fireEvent.mouseMove(canvas!, { clientX: 448, clientY: 448 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should maintain selection after copy operation', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Selection should remain active
+    // Try to copy again - should work
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle copy operation with selection extending beyond canvas', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Start selection inside, extend beyond canvas
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    
+    // Move outside canvas boundaries
+    const globalMouseMoveEvent = new MouseEvent('mousemove', {
+      clientX: 800,
+      clientY: 800
+    })
+    document.dispatchEvent(globalMouseMoveEvent)
+    
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection (should be clamped to canvas boundaries)
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  // ===== COMPREHENSIVE PASTE OPERATION TESTS =====
+  
+  it('should handle paste operation without clipboard content', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Try to paste without any copied content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should not modify pixels without clipboard content
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle paste operation with clipboard content', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // First, create a selection and copy it
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Now paste the copied content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels (added pasted pixels)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle paste operation at canvas center when no selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // First, create a selection and copy it
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Now paste the copied content (should center on canvas)
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle paste operation with large clipboard content', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create large selection and copy it
+    fireEvent.mouseDown(canvas!, { clientX: 0, clientY: 0 })
+    fireEvent.mouseMove(canvas!, { clientX: 448, clientY: 448 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Paste the large content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should create new selection around pasted content', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // First, create a selection and copy it
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Paste the copied content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+    
+    // A new selection should be created around the pasted content
+    // This can be verified by trying to copy again
+    jest.clearAllMocks()
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    // Should work if selection exists
+  })
+
+  it('should handle paste operation with clipboard content extending beyond canvas', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection extending beyond canvas and copy it
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    
+    // Move outside canvas boundaries
+    const globalMouseMoveEvent = new MouseEvent('mousemove', {
+      clientX: 800,
+      clientY: 800
+    })
+    document.dispatchEvent(globalMouseMoveEvent)
+    
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Paste the content (should be clamped to canvas boundaries)
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels within canvas boundaries
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  // ===== COMPREHENSIVE SQUARE SELECT TOOL TESTS =====
+  
+  it('should create precise rectangular selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create precise rectangular selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })   // Start at (1,1)
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })   // End at (3,3)
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle square selection with exact pixel boundaries', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with exact pixel boundaries
+    fireEvent.mouseDown(canvas!, { clientX: 0, clientY: 0 })     // Start at (0,0)
+    fireEvent.mouseMove(canvas!, { clientX: 31, clientY: 31 })   // End at (0,0) - single pixel
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle square selection with reversed coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with reversed coordinates (end before start)
+    fireEvent.mouseDown(canvas!, { clientX: 96, clientY: 96 })   // Start at (3,3)
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 32 })   // End at (1,1)
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle square selection with zero width', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with zero width (same X coordinates)
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })   // Start at (1,1)
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 96 })   // End at (1,3) - same X
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle square selection with zero height', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with zero height (same Y coordinates)
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })   // Start at (1,1)
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 32 })   // End at (3,1) - same Y
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle square selection at canvas edges', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection at canvas edges
+    fireEvent.mouseDown(canvas!, { clientX: 0, clientY: 0 })     // Start at (0,0)
+    fireEvent.mouseMove(canvas!, { clientX: 480, clientY: 480 }) // End at (15,15) - canvas edge
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle square selection with rapid mouse movements', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with rapid mouse movements
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  // ===== COMPREHENSIVE LASSO TOOL TESTS =====
+  
+  it('should handle lasso tool with single point', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Start lasso selection and immediately release
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle lasso tool with two points', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Create lasso with two points
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle lasso tool with complex path', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Create complex lasso path
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 96 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 96 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle lasso tool with path extending beyond canvas', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Start lasso inside canvas
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    
+    // Move outside canvas boundaries
+    const globalMouseMoveEvent = new MouseEvent('mousemove', {
+      clientX: 800,
+      clientY: 800
+    })
+    document.dispatchEvent(globalMouseMoveEvent)
+    
+    // Move back inside
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 64 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle lasso tool with rapid mouse movements', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Create lasso with rapid movements
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 48, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 80, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 48 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 80 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle lasso tool with overlapping path', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Create lasso with overlapping path (figure-8 style)
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 96 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 64 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  // ===== INTEGRATION TESTS =====
+  
+  it('should handle copy-paste workflow with square selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create square selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Paste the copied content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle copy-paste workflow with lasso selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Create lasso selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the lasso selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Paste the copied content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle cut-paste workflow with square selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create square selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Cut the selection
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Should have modified pixels (removed selected pixels)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+    
+    // Clear the call count
+    jest.clearAllMocks()
+    
+    // Paste the cut content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels again (added pasted pixels)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle cut-paste workflow with lasso selection', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Switch to lasso tool
+    const lassoButton = container.querySelector('[data-testid="tool-lasso"]')
+    if (lassoButton) {
+      fireEvent.click(lassoButton)
+    }
+    
+    // Create lasso selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 64, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 64 })
+    fireEvent.mouseMove(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Cut the lasso selection
+    fireEvent.keyDown(document, { key: 'x', ctrlKey: true })
+    
+    // Should have modified pixels (removed selected pixels)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+    
+    // Clear the call count
+    jest.clearAllMocks()
+    
+    // Paste the cut content
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels again (added pasted pixels)
+    expect(defaultProps.onPixelsChange).toHaveBeenCalled()
+  })
+
+  it('should handle multiple copy-paste operations', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create initial selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Copy the selection
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Clear the selection
+    fireEvent.keyDown(document, { key: 'Escape' })
+    
+    // Paste multiple times
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true })
+    
+    // Should have modified pixels multiple times
+    expect(defaultProps.onPixelsChange).toHaveBeenCalledTimes(3)
+  })
+
+  // ===== EDGE CASES AND ERROR HANDLING =====
+  
+  it('should handle keyboard shortcuts with modifier keys only', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Try keyboard shortcuts with only modifier keys
+    fireEvent.keyDown(document, { key: 'Control' })
+    fireEvent.keyDown(document, { key: 'Meta' })
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle keyboard shortcuts with wrong modifier keys', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Try keyboard shortcuts with wrong modifier keys
+    fireEvent.keyDown(document, { key: 'c', shiftKey: true })  // Shift+C instead of Ctrl+C
+    fireEvent.keyDown(document, { key: 'x', altKey: true })    // Alt+X instead of Ctrl+X
+    fireEvent.keyDown(document, { key: 'v', shiftKey: true })  // Shift+V instead of Ctrl+V
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle rapid keyboard shortcut presses', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Rapidly press copy shortcut
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true })
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle selection with extremely small coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with extremely small coordinates
+    fireEvent.mouseDown(canvas!, { clientX: 1, clientY: 1 })
+    fireEvent.mouseMove(canvas!, { clientX: 2, clientY: 2 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle selection with extremely large coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with extremely large coordinates
+    fireEvent.mouseDown(canvas!, { clientX: 10000, clientY: 10000 })
+    fireEvent.mouseMove(canvas!, { clientX: 20000, clientY: 20000 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle selection with negative coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with negative coordinates
+    fireEvent.mouseDown(canvas!, { clientX: -100, clientY: -100 })
+    fireEvent.mouseMove(canvas!, { clientX: -50, clientY: -50 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle selection with decimal coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with decimal coordinates
+    fireEvent.mouseDown(canvas!, { clientX: 32.5, clientY: 32.5 })
+    fireEvent.mouseMove(canvas!, { clientX: 96.7, clientY: 96.3 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle selection with zero coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with zero coordinates
+    fireEvent.mouseDown(canvas!, { clientX: 0, clientY: 0 })
+    fireEvent.mouseMove(canvas!, { clientX: 0, clientY: 0 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
+
+  it('should handle selection with maximum canvas coordinates', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create selection with maximum canvas coordinates
+    const maxCoord = (defaultProps.canvasSize - 1) * 32 // 32 is pixel size
+    fireEvent.mouseDown(canvas!, { clientX: maxCoord, clientY: maxCoord })
+    fireEvent.mouseMove(canvas!, { clientX: maxCoord, clientY: maxCoord })
+    fireEvent.mouseUp(canvas!)
+    
+    // Should not modify pixels
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+  })
 })

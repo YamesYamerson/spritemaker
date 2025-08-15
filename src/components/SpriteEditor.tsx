@@ -71,6 +71,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   // State for lasso tool
   const [lassoPath, setLassoPath] = useState<Array<{ x: number; y: number }>>([])
   const [isLassoing, setIsLassoing] = useState(false)
+  const [animationTime, setAnimationTime] = useState(0) // For animated selection outlines
 
   // State for clipboard operations
   const [clipboard, setClipboard] = useState<{
@@ -427,7 +428,24 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   //   }
   // }, [selectedTool])
 
+  // Animation loop for selection outlines
+  useEffect(() => {
+    if (!selection) return
 
+    let animationId: number
+    const animate = () => {
+      setAnimationTime(prev => (prev + 1) % 60) // Cycle through 60 frames
+      animationId = requestAnimationFrame(animate)
+    }
+    
+    animationId = requestAnimationFrame(animate)
+    
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId)
+      }
+    }
+  }, [selection])
 
   // New method for drawing with brush patterns
   const drawWithBrushPattern = useCallback((x: number, y: number, color: Color) => {
@@ -1825,7 +1843,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       ctx.globalAlpha = 0.8
       
       if (selectedTool === 'lasso' && lassoPath.length > 1) {
-        // Draw lasso path with dashed lines for pixel art consistency
+        // Draw lasso path with animated dashed lines
         ctx.beginPath()
         
         // Start at the first point, ensuring pixel-perfect positioning
@@ -1845,17 +1863,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
           ctx.closePath()
         }
         
-        // Apply dashed line style to match rectangular selection
-        if (ctx.setLineDash) {
-          ctx.setLineDash([5, 5])
-          ctx.stroke()
-          ctx.setLineDash([]) // Reset to solid line
-        } else {
-          // Fallback to solid line if setLineDash is not supported
-          ctx.stroke()
-        }
+                  // Apply animated dashed line style
+          if (ctx.setLineDash) {
+            const dashOffset = (animationTime * 0.5) % 10 // Move dash pattern more slowly
+            ctx.setLineDash([5, 5])
+            ctx.lineDashOffset = dashOffset
+            ctx.stroke()
+            ctx.setLineDash([]) // Reset to solid line
+            ctx.lineDashOffset = 0 // Reset dash offset
+          } else {
+            // Fallback to solid line if setLineDash is not supported
+            ctx.stroke()
+          }
       } else {
-        // Draw selection rectangle
+        // Draw selection rectangle with animated dashed lines
         // Calculate bounds using raw coordinates but clamp to canvas boundaries for display
         // For visual representation, we extend to canvasSize to fully cover the last pixel
         const actualCurrentPos = rawCurrentPos || currentPos
@@ -1864,11 +1885,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         const minY = Math.max(0, Math.min(startPos.y, actualCurrentPos.y)) * pixelSize
         const maxY = Math.min(canvasSize, Math.max(startPos.y, actualCurrentPos.y)) * pixelSize
         
-        // Draw selection rectangle (dashed if supported, solid otherwise)
+        // Draw selection rectangle with animated dashed lines
         if (ctx.setLineDash) {
+          const dashOffset = (animationTime * 0.5) % 10 // Move dash pattern more slowly
           ctx.setLineDash([5, 5])
+          ctx.lineDashOffset = dashOffset
           ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
           ctx.setLineDash([]) // Reset to solid line
+          ctx.lineDashOffset = 0 // Reset dash offset
         } else {
           // Fallback to solid line if setLineDash is not supported
           ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
@@ -1877,7 +1901,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       
       ctx.globalAlpha = 1.0
     }
-  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool])
+  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool, lassoPath, animationTime])
 
   return (
     <div className="canvas-container">
