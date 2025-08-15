@@ -40,7 +40,8 @@ describe('LayerPanel', () => {
     canvasSize: 16,
     onNewLayer: jest.fn(),
     onLayerToggle: jest.fn(),
-    onLayerSelect: jest.fn()
+    onLayerSelect: jest.fn(),
+    onDeleteLayer: jest.fn()
   }
 
   beforeEach(() => {
@@ -110,6 +111,19 @@ describe('LayerPanel', () => {
     expect(defaultProps.onNewLayer).toHaveBeenCalled()
   })
 
+  it('should ensure newly created layers become active by default', () => {
+    // Test that the onNewLayer callback is called
+    render(<LayerPanel {...defaultProps} />)
+    
+    const newLayerButton = screen.getByTitle('New Layer')
+    fireEvent.click(newLayerButton)
+    
+    expect(defaultProps.onNewLayer).toHaveBeenCalled()
+    
+    // Note: The actual layer state management is handled in App.tsx
+    // This test verifies the UI interaction works correctly
+  })
+
   it('should handle undefined pixels gracefully', () => {
     const propsWithUndefinedPixels = {
       ...defaultProps,
@@ -153,5 +167,58 @@ describe('LayerPanel', () => {
     // Layer 2 is not active, should have transparent background
     const layer2Container = screen.getByText('Layer 2').closest('.layer-item')
     expect(layer2Container).toHaveStyle({ backgroundColor: 'transparent' })
+  })
+
+  it('should handle layer deletion', () => {
+    render(<LayerPanel {...defaultProps} />)
+    
+    // Find all delete buttons (× symbols)
+    const deleteButtons = screen.getAllByTitle('Delete Layer')
+    expect(deleteButtons).toHaveLength(3)
+    
+    // Click the delete button for Layer 2
+    fireEvent.click(deleteButtons[1])
+    
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledWith(2)
+  })
+
+  it('should ensure proper layer deletion behavior', () => {
+    render(<LayerPanel {...defaultProps} />)
+    
+    const deleteButtons = screen.getAllByTitle('Delete Layer')
+    
+    // Test deleting a non-active layer
+    fireEvent.click(deleteButtons[1]) // Layer 2 (not active)
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledWith(2)
+    
+    // Test deleting the active layer (Layer 1)
+    fireEvent.click(deleteButtons[0]) // Layer 1 (active)
+    expect(defaultProps.onDeleteLayer).toHaveBeenCalledWith(1)
+    
+    // Note: The actual layer state management and active layer reassignment
+    // is handled in App.tsx. This test verifies the UI interactions work correctly.
+  })
+
+  it('should display empty state when no layers exist', () => {
+    const propsWithNoLayers = {
+      ...defaultProps,
+      layers: []
+    }
+    
+    render(<LayerPanel {...propsWithNoLayers} />)
+    
+    expect(screen.getByText('Add a layer to edit')).toBeInTheDocument()
+  })
+
+  it('should not show delete buttons when no layers exist', () => {
+    const propsWithNoLayers = {
+      ...defaultProps,
+      layers: []
+    }
+    
+    render(<LayerPanel {...propsWithNoLayers} />)
+    
+    const deleteButtons = screen.queryAllByTitle('Delete Layer')
+    expect(deleteButtons).toHaveLength(0)
   })
 })

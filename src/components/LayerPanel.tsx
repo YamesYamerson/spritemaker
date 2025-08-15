@@ -54,6 +54,7 @@ interface LayerPanelProps {
   onNewLayer: () => void
   onLayerToggle: (layerId: number) => void
   onLayerSelect: (layerId: number) => void
+  onDeleteLayer: (layerId: number) => void
 }
 
 const LayerPanel: React.FC<LayerPanelProps> = ({
@@ -62,7 +63,8 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   canvasSize,
   onNewLayer,
   onLayerToggle,
-  onLayerSelect
+  onLayerSelect,
+  onDeleteLayer
 }) => {
   return (
     <div style={{
@@ -123,63 +125,108 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
           overflowY: 'auto',
           padding: '8px'
         }}>
-          {layers.map(layer => (
-            <div
-              key={layer.id}
-              className={`layer-item ${layer.active ? 'active' : ''}`}
-              onClick={() => onLayerSelect(layer.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px',
-                border: '1px solid #444',
-                borderRadius: '4px',
-                marginBottom: '8px',
-                cursor: 'pointer',
-                backgroundColor: layer.active ? '#3a3a3a' : 'transparent',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              <input
-                type="checkbox"
-                className="layer-visibility"
-                checked={layer.visible}
-                onChange={() => onLayerToggle(layer.id)}
-                onClick={(e) => e.stopPropagation()}
-                style={{ margin: 0 }}
-              />
-              
-              {/* Layer Thumbnail */}
-              <div style={{
-                width: '32px',
-                height: '32px',
-                border: '1px solid #555',
-                borderRadius: '2px',
-                overflow: 'hidden',
-                flexShrink: 0
-              }}>
-                <img
-                  src={generateLayerThumbnail(pixels, layer.id, canvasSize)}
-                  alt={`${layer.name} thumbnail`}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain'
-                  }}
-                />
-              </div>
-              
-              <span style={{ 
-                color: '#fff', 
-                fontSize: '12px',
-                flex: 1,
-                textAlign: 'left'
-              }}>
-                {layer.name}
-              </span>
+          {layers.length === 0 ? (
+            <div style={{
+              padding: '20px',
+              textAlign: 'center',
+              color: '#666',
+              fontSize: '12px'
+            }}>
+              Add a layer to edit
             </div>
-          ))}
+          ) : (
+            layers.map(layer => (
+              <div
+                key={layer.id}
+                className={`layer-item ${layer.active ? 'active' : ''}`}
+                onClick={() => onLayerSelect(layer.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px',
+                  border: '1px solid #444',
+                  borderRadius: '4px',
+                  marginBottom: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: layer.active ? '#3a3a3a' : 'transparent',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  className="layer-visibility"
+                  checked={layer.visible}
+                  onChange={() => onLayerToggle(layer.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ margin: 0 }}
+                />
+                
+                {/* Layer Thumbnail */}
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  border: '1px solid #555',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}>
+                  <img
+                    src={generateLayerThumbnail(pixels, layer.id, canvasSize)}
+                    alt={`${layer.name} thumbnail`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                
+                <span style={{ 
+                  color: '#fff', 
+                  fontSize: '12px',
+                  flex: 1,
+                  textAlign: 'left'
+                }}>
+                  {layer.name}
+                </span>
+
+                {/* Delete Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteLayer(layer.id)
+                  }}
+                  style={{
+                    padding: '2px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#888',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '2px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#555'
+                    e.currentTarget.style.color = '#ff6b6b'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#888'
+                  }}
+                  title="Delete Layer"
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

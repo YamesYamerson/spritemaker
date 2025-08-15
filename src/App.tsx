@@ -34,7 +34,7 @@ function App() {
       id: Date.now(),
       name: `Layer ${layers.length + 1}`,
       visible: true,
-      active: false
+      active: true
     }
     setLayers(prev => prev.map(l => ({ ...l, active: false })).concat(newLayer))
   }
@@ -47,6 +47,17 @@ function App() {
 
   const handleLayerSelect = (layerId: number) => {
     setLayers(prev => prev.map(l => ({ ...l, active: l.id === layerId })))
+  }
+
+  const handleDeleteLayer = (layerId: number) => {
+    setLayers(prev => {
+      const newLayers = prev.filter(l => l.id !== layerId)
+      // If we're deleting the active layer or if no layers are active, make the first remaining layer active
+      if (newLayers.length > 0 && (prev.find(l => l.id === layerId)?.active || !prev.some(l => l.active))) {
+        newLayers[0].active = true
+      }
+      return newLayers
+    })
   }
 
   // File menu handlers
@@ -196,6 +207,7 @@ function App() {
             onNewLayer={handleNewLayer}
             onLayerToggle={handleLayerToggle}
             onLayerSelect={handleLayerSelect}
+            onDeleteLayer={handleDeleteLayer}
           />
         </div>
 
