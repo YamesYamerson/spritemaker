@@ -173,7 +173,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   }, [pixels, activeLayer, currentDrawingAction.isActive, brushSize, canvasSize, currentBrushPattern])
 
   // Draw rectangle between two points
-  const drawRectangle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color) => {
+  const drawRectangle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color, isFilled: boolean = true) => {
     if (!activeLayer) return new Map(pixels)
     
     const minX = Math.min(startX, endX)
@@ -183,18 +183,63 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     const newPixels = new Map(pixels)
     
-    for (let y = minY; y < maxY; y++) {
+    if (!isFilled) {
+      // For border only, we need to draw just the outline
+      // Draw top edge
       for (let x = minX; x < maxX; x++) {
-        if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) continue
-        
-        const key = `${x},${y}`
-        const existingPixel = pixels.get(key)
-        
-        if (color === 'transparent') {
-          if (existingPixel) {
-            newPixels.delete(key)
-          }
-        } else {
+        if (x >= 0 && x < canvasSize && minY >= 0 && minY < canvasSize) {
+          const key = `${x},${minY}`
+          newPixels.set(key, {
+            x,
+            y: minY,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+      // Draw bottom edge
+      for (let x = minX; x < maxX; x++) {
+        if (x >= 0 && x < canvasSize && maxY - 1 >= 0 && maxY - 1 < canvasSize) {
+          const key = `${x},${maxY - 1}`
+          newPixels.set(key, {
+            x,
+            y: maxY - 1,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+      // Draw left edge
+      for (let y = minY; y < maxY; y++) {
+        if (minX >= 0 && minX < canvasSize && y >= 0 && y < canvasSize) {
+          const key = `${minX},${y}`
+          newPixels.set(key, {
+            x: minX,
+            y,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+      // Draw right edge
+      for (let y = minY; y < maxY; y++) {
+        if (maxX - 1 >= 0 && maxX - 1 < canvasSize && y >= 0 && y < canvasSize) {
+          const key = `${maxX - 1},${y}`
+          newPixels.set(key, {
+            x: maxX - 1,
+            y,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+    } else {
+      // For filled rectangle, fill the entire area
+      for (let y = minY; y < maxY; y++) {
+        for (let x = minX; x < maxX; x++) {
+          if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) continue
+          
+          const key = `${x},${y}`
           newPixels.set(key, {
             x,
             y,
@@ -210,7 +255,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   }, [pixels, activeLayer, canvasSize])
 
   // Draw circle based on bounding box (using midpoint circle algorithm)
-  const drawCircle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color) => {
+  const drawCircle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color, isFilled: boolean = true) => {
     if (!activeLayer) return new Map(pixels)
     
     // Calculate center as the middle of the bounding box
@@ -222,31 +267,47 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     const newPixels = new Map(pixels)
     
-    // Midpoint circle algorithm
-    let x = radius
-    let y = 0
-    let err = 0
-    
-    while (x >= y) {
-      // Draw 8 octants
-      const points = [
-        [centerX + x, centerY + y], [centerX + y, centerY + x],
-        [centerX - y, centerY + x], [centerX - x, centerY + y],
-        [centerX - x, centerY - y], [centerX - y, centerY - x],
-        [centerX + y, centerY - x], [centerX + x, centerY - y]
-      ]
+    if (isFilled) {
+      // Fill the entire circle area
+      const minX = Math.max(0, centerX - radius)
+      const maxX = Math.min(canvasSize - 1, centerX + radius)
+      const minY = Math.max(0, centerY - radius)
+      const maxY = Math.min(canvasSize - 1, centerY + radius)
       
-      for (const [px, py] of points) {
-        if (px < 0 || px >= canvasSize || py < 0 || py >= canvasSize) continue
-        
-        const key = `${px},${py}`
-        const existingPixel = pixels.get(key)
-        
-        if (color === 'transparent') {
-          if (existingPixel) {
-            newPixels.delete(key)
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          // Check if this pixel is inside the circle
+          const distanceSquared = (x - centerX) ** 2 + (y - centerY) ** 2
+          if (distanceSquared <= radius ** 2) {
+            const key = `${x},${y}`
+            newPixels.set(key, {
+              x,
+              y,
+              color,
+              layerId: activeLayer.id
+            })
           }
-        } else {
+        }
+      }
+    } else {
+      // For border only, use the midpoint algorithm to draw just the outline
+      let x = radius
+      let y = 0
+      let err = 0
+      
+      while (x >= y) {
+        // Draw 8 octants
+        const points = [
+          [centerX + x, centerY + y], [centerX + y, centerY + x],
+          [centerX - y, centerY + x], [centerX - x, centerY + y],
+          [centerX - x, centerY - y], [centerX - y, centerY - x],
+          [centerX + y, centerY - x], [centerX + x, centerY - y]
+        ]
+        
+        for (const [px, py] of points) {
+          if (px < 0 || px >= canvasSize || py < 0 || py >= canvasSize) continue
+          
+          const key = `${px},${py}`
           newPixels.set(key, {
             x: px,
             y: py,
@@ -254,15 +315,15 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
             layerId: activeLayer.id
           })
         }
-      }
-      
-      if (err <= 0) {
-        y += 1
-        err += 2 * y + 1
-      }
-      if (err > 0) {
-        x -= 1
-        err -= 2 * x + 1
+        
+        if (err <= 0) {
+          y += 1
+          err += 2 * y + 1
+        }
+        if (err > 0) {
+          x -= 1
+          err -= 2 * x + 1
+        }
       }
     }
     
@@ -554,7 +615,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
       // Eyedropper doesn't create a drawing action, so reset
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
-    } else if (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'line') {
+    } else if (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled' || selectedTool === 'circle-border' || selectedTool === 'circle-filled' || selectedTool === 'line') {
       // For shape tools, start tracking the shape preview
       setShapePreview({
         tool: selectedTool,
@@ -585,7 +646,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
     
     // Handle shape preview updates
-    if (shapePreview && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'line')) {
+    if (shapePreview && (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled' || selectedTool === 'circle-border' || selectedTool === 'circle-filled' || selectedTool === 'line')) {
       setShapePreview(prev => prev ? { ...prev, currentPos: { x, y } } : null)
       return
     }
@@ -697,10 +758,10 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       // Draw the shape and capture the new pixels
       let newPixels: Map<string, PixelData>
       
-      if (tool === 'rectangle') {
-        newPixels = drawRectangle(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor)
-      } else if (tool === 'circle') {
-        newPixels = drawCircle(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor)
+      if (tool === 'rectangle-border' || tool === 'rectangle-filled') {
+        newPixels = drawRectangle(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor, tool === 'rectangle-filled')
+      } else if (tool === 'circle-border' || tool === 'circle-filled') {
+        newPixels = drawCircle(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor, tool === 'circle-filled')
       } else if (tool === 'line') {
         newPixels = drawLine(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor)
       } else {
@@ -1078,14 +1139,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       ctx.lineWidth = 2
       ctx.globalAlpha = 0.7
       
-      if (tool === 'rectangle') {
+      if (tool === 'rectangle-border' || tool === 'rectangle-filled') {
         const minX = Math.min(startPos.x, currentPos.x) * pixelSize
         const maxX = Math.max(startPos.x, currentPos.x) * pixelSize
         const minY = Math.min(startPos.y, currentPos.y) * pixelSize
         const maxY = Math.max(startPos.y, currentPos.y) * pixelSize
         
+        if (tool === 'rectangle-filled') {
+          ctx.fillStyle = primaryColor
+          ctx.globalAlpha = 0.3
+          ctx.fillRect(minX, minY, maxX - minX, maxY - minY)
+          ctx.globalAlpha = 0.7
+        }
         ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
-      } else if (tool === 'circle') {
+      } else if (tool === 'circle-border' || tool === 'circle-filled') {
         // Draw bounding box preview
         const minX = Math.min(startPos.x, currentPos.x) * pixelSize
         const maxX = Math.max(startPos.x, currentPos.x) * pixelSize
@@ -1099,6 +1166,15 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         const centerX = Math.floor((startPos.x + currentPos.x) / 2) * pixelSize
         const centerY = Math.floor((startPos.y + currentPos.y) / 2) * pixelSize
         const radius = Math.max(1, Math.sqrt((currentPos.x - centerX / pixelSize) ** 2 + (currentPos.y - centerY / pixelSize) ** 2)) * pixelSize
+        
+        if (tool === 'circle-filled') {
+          ctx.fillStyle = primaryColor
+          ctx.globalAlpha = 0.3
+          ctx.beginPath()
+          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
+          ctx.fill()
+          ctx.globalAlpha = 0.7
+        }
         
         ctx.beginPath()
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)

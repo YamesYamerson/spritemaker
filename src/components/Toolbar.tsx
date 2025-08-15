@@ -60,15 +60,25 @@ const Toolbar: React.FC<ToolbarProps> = ({
     }
   }
 
-  // State for grid dropdown visibility
+  // State for dropdown visibility
   const [isGridDropdownOpen, setIsGridDropdownOpen] = useState(false)
+  const [isRectangleDropdownOpen, setIsRectangleDropdownOpen] = useState(false)
+  const [isCircleDropdownOpen, setIsCircleDropdownOpen] = useState(false)
   const gridDropdownRef = useRef<HTMLDivElement>(null)
+  const rectangleDropdownRef = useRef<HTMLDivElement>(null)
+  const circleDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Click outside handler to close dropdown
+  // Click outside handler to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (gridDropdownRef.current && !gridDropdownRef.current.contains(event.target as Node)) {
         setIsGridDropdownOpen(false)
+      }
+      if (rectangleDropdownRef.current && !rectangleDropdownRef.current.contains(event.target as Node)) {
+        setIsRectangleDropdownOpen(false)
+      }
+      if (circleDropdownRef.current && !circleDropdownRef.current.contains(event.target as Node)) {
+        setIsCircleDropdownOpen(false)
       }
     }
 
@@ -124,13 +134,27 @@ const Toolbar: React.FC<ToolbarProps> = ({
     safeGridSettingsChange(newSettings)
   }
 
+  // Helper function to get current rectangle tool type
+  const getCurrentRectangleTool = (): Tool => {
+    if (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled') {
+      return selectedTool
+    }
+    return 'rectangle-border' // Default to border rectangle
+  }
+
+  // Helper function to get current circle tool type
+  const getCurrentCircleTool = (): Tool => {
+    if (selectedTool === 'circle-border' || selectedTool === 'circle-filled') {
+      return selectedTool
+    }
+    return 'circle-border' // Default to border circle
+  }
+
   const tools: { id: Tool; name: string; icon: string; iconType: 'svg' | 'png' }[] = [
     { id: 'pencil', name: 'Pencil', icon: '/icons/pencil.svg', iconType: 'svg' },
     { id: 'eraser', name: 'Eraser', icon: '/icons/eraser.svg', iconType: 'svg' },
     { id: 'fill', name: 'Fill', icon: '/icons/fill.svg', iconType: 'svg' },
     { id: 'eyedropper', name: 'Eyedropper', icon: '/icons/eyedropper.png', iconType: 'png' },
-    { id: 'rectangle', name: 'Rectangle', icon: '/icons/rectangle.png', iconType: 'png' },
-    { id: 'circle', name: 'Circle', icon: '/icons/circle.png', iconType: 'png' },
     { id: 'line', name: 'Line', icon: '/icons/line.svg', iconType: 'svg' }
   ]
 
@@ -237,6 +261,200 @@ const Toolbar: React.FC<ToolbarProps> = ({
             )}
           </button>
         ))}
+        
+        {/* Rectangle Tool Dropdown */}
+        <div 
+          ref={rectangleDropdownRef}
+          style={{ 
+            position: 'relative', 
+            marginLeft: '8px' 
+          }}
+        >
+          <button
+            className={`tool-button ${getCurrentRectangleTool() === selectedTool ? 'active' : ''}`}
+            onClick={() => setIsRectangleDropdownOpen(!isRectangleDropdownOpen)}
+            title={`Rectangle Tool - Currently ${getCurrentRectangleTool() === 'rectangle-filled' ? 'Filled' : 'Border'}`}
+            style={{ position: 'relative' }}
+          >
+            <img
+              src="/icons/rectangle.png"
+              alt="Rectangle"
+              style={{ width: '20px', height: '20px' }}
+            />
+            
+            {/* Dropdown arrow indicator */}
+            <div style={{
+              position: 'absolute',
+              bottom: '2px',
+              right: '2px',
+              width: '0',
+              height: '0',
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '4px solid #ccc',
+              fontSize: '8px'
+            }} />
+          </button>
+
+          {/* Rectangle Options Dropdown */}
+          {isRectangleDropdownOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '0',
+              backgroundColor: '#4a4a4a',
+              border: '1px solid #666',
+              borderRadius: '4px',
+              padding: '4px',
+              zIndex: 9999,
+              minWidth: '120px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              marginTop: '2px'
+            }}>
+              {[
+                { value: 'rectangle-border', label: 'Border Rectangle', icon: '/icons/rectangle.png' },
+                { value: 'rectangle-filled', label: 'Filled Rectangle', icon: '/icons/rectangle.png' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    safeToolSelect(option.value as Tool)
+                    setIsRectangleDropdownOpen(false)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    backgroundColor: getCurrentRectangleTool() === option.value ? '#666' : 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    borderRadius: '2px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (getCurrentRectangleTool() !== option.value) {
+                      e.currentTarget.style.backgroundColor = '#555'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (getCurrentRectangleTool() !== option.value) {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }
+                  }}
+                  title={option.label}
+                >
+                  <img
+                    src={option.icon}
+                    alt={option.label}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Circle Tool Dropdown */}
+        <div 
+          ref={circleDropdownRef}
+          style={{ 
+            position: 'relative', 
+            marginLeft: '8px' 
+          }}
+        >
+          <button
+            className={`tool-button ${getCurrentCircleTool() === selectedTool ? 'active' : ''}`}
+            onClick={() => setIsCircleDropdownOpen(!isCircleDropdownOpen)}
+            title={`Circle Tool - Currently ${getCurrentCircleTool() === 'circle-filled' ? 'Filled' : 'Border'}`}
+            style={{ position: 'relative' }}
+          >
+            <img
+              src="/icons/circle.png"
+              alt="Circle"
+              style={{ width: '20px', height: '20px' }}
+            />
+            
+            {/* Dropdown arrow indicator */}
+            <div style={{
+              position: 'absolute',
+              bottom: '2px',
+              right: '2px',
+              width: '0',
+              height: '0',
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '4px solid #ccc',
+              fontSize: '8px'
+            }} />
+          </button>
+
+          {/* Circle Options Dropdown */}
+          {isCircleDropdownOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '0',
+              backgroundColor: '#4a4a4a',
+              border: '1px solid #666',
+              borderRadius: '4px',
+              padding: '4px',
+              zIndex: 9999,
+              minWidth: '120px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              marginTop: '2px'
+            }}>
+              {[
+                { value: 'circle-border', label: 'Border Circle', icon: '/icons/circle.png' },
+                { value: 'circle-filled', label: 'Filled Circle', icon: '/icons/circle.png' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    safeToolSelect(option.value as Tool)
+                    setIsCircleDropdownOpen(false)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    backgroundColor: getCurrentCircleTool() === option.value ? '#666' : 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    borderRadius: '2px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (getCurrentCircleTool() !== option.value) {
+                      e.currentTarget.style.backgroundColor = '#555'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (getCurrentCircleTool() !== option.value) {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }
+                  }}
+                  title={option.label}
+                >
+                  <img
+                    src={option.icon}
+                    alt={option.label}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         
         {/* Grid Controls - Icon-based dropdown */}
         <div 
