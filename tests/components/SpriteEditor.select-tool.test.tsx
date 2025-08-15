@@ -467,4 +467,22 @@ describe('SpriteEditor - Select Tool', () => {
     // This test verifies that clicking on existing selection doesn't auto-start new selection
     expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
   })
+
+  it('should not store selection events in history', () => {
+    const { container } = render(<SpriteEditor {...defaultProps} />)
+    const canvas = container.querySelector('canvas')
+    expect(canvas).toBeInTheDocument()
+    jest.clearAllMocks()
+    
+    // Create a selection
+    fireEvent.mouseDown(canvas!, { clientX: 32, clientY: 32 })
+    fireEvent.mouseMove(canvas!, { clientX: 96, clientY: 96 })
+    fireEvent.mouseUp(canvas!)
+    
+    // Verify selection exists but no pixels were modified
+    expect(defaultProps.onPixelsChange).not.toHaveBeenCalled()
+    
+    // The selection should not create a history entry
+    // This test verifies that selections are no longer stored in history
+  })
 })

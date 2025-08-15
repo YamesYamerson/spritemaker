@@ -62,7 +62,6 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     currentPos: { x: number; y: number }
     rawCurrentPos?: { x: number; y: number } // Store raw coordinates for bounds calculation
     isActive: boolean
-    lastHistoryBounds?: { startX: number; startY: number; endX: number; endY: number }
     content: Map<string, PixelData> // Store the actual pixel content within selection
   } | null>(null)
   
@@ -293,8 +292,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       currentPos: { x: pasteStartX + pasteWidth - 1, y: pasteStartY + pasteHeight - 1 },
       isActive: true,
 
-      content: clipboard.pixels,
-      lastHistoryBounds: undefined
+      content: clipboard.pixels
     })
   }, [clipboard, activeLayer, pixels, canvasSize])
 
@@ -694,8 +692,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
           startPos: { x: bounds.startX, y: bounds.startY },
           currentPos: { x: bounds.endX, y: bounds.endY },
           isActive: true,
-          content: content,
-          lastHistoryBounds: bounds
+          content: content
         })
       }
       return
@@ -796,8 +793,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
           startPos: { x: bounds.startX, y: bounds.startY },
           currentPos: { x: bounds.endX, y: bounds.endY },
           isActive: true,
-          content: operation.metadata.clipboardContent || new Map(),
-          lastHistoryBounds: undefined
+          content: operation.metadata.clipboardContent || new Map()
         })
       }
       return
@@ -1032,8 +1028,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         currentPos: { x: clampedX, y: clampedY },
         rawCurrentPos: { x: clampedX, y: clampedY }, // Initialize raw coordinates
         isActive: true,
-        content: new Map(), // Initialize content for new selection
-        lastHistoryBounds: undefined // No history entry yet
+        content: new Map() // Initialize content for new selection
       })
       setIsSelecting(true) // Start actively selecting
       // Don't create a drawing action - selection is just visual
@@ -1331,36 +1326,11 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       })
       
-      // Only create history entry if the selection area has actually changed
-      const hasSelectionChanged = !selection.lastHistoryBounds || 
-        selection.lastHistoryBounds.startX !== currentBounds.startX ||
-        selection.lastHistoryBounds.startY !== currentBounds.startY ||
-        selection.lastHistoryBounds.endX !== currentBounds.endX ||
-        selection.lastHistoryBounds.endY !== currentBounds.endY
-      
-      if (hasSelectionChanged) {
-        const operation = historyManagerRef.current.createStrokeOperation(
-          'select',
-          activeLayer!.id,
-          [] // No pixel changes for selections
-        )
-        
-        // Store the selection bounds and content in metadata for history display
-        operation.metadata = {
-          selectionBounds: currentBounds,
-          selectionContent: selectionContent
-        }
-        
-        historyManagerRef.current.pushOperation(operation)
-        dispatchHistoryChange()
-        
-        // Update the selection with new bounds and content
-        setSelection(prev => prev ? {
-          ...prev,
-          lastHistoryBounds: currentBounds,
-          content: selectionContent
-        } : null)
-      }
+      // Update the selection with new bounds and content (no history entry)
+      setSelection(prev => prev ? {
+        ...prev,
+        content: selectionContent
+      } : null)
       
       // Keep the selection persistent - don't clear it
       // The selection will remain visible until explicitly cleared
