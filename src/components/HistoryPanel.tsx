@@ -184,159 +184,164 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* History Header */}
-      <div style={{
-        padding: '8px 12px',
-        backgroundColor: '#2a2a2a',
-        border: '1px solid #555',
-        borderRadius: '4px',
-        marginBottom: '10px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexShrink: 0
-      }}>
-        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
-          History
-        </span>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={handleUndo}
-            disabled={!history.canUndo}
-            style={{
-              padding: '4px 8px',
-              backgroundColor: history.canUndo ? '#4a4a4a' : '#2a2a2a',
-              border: '1px solid #555',
-              borderRadius: '3px',
-              color: history.canUndo ? '#fff' : '#666',
-              cursor: history.canUndo ? 'pointer' : 'not-allowed',
-              fontSize: '11px',
-              minWidth: '40px'
-            }}
-            title="Undo (Ctrl+Z)"
-          >
-            Undo
-          </button>
-          <button
-            onClick={handleRedo}
-            disabled={!history.canRedo}
-            style={{
-              padding: '4px 8px',
-              backgroundColor: history.canRedo ? '#4a4a4a' : '#2a2a2a',
-              border: '1px solid #555',
-              borderRadius: '3px',
-              color: history.canRedo ? '#fff' : '#666',
-              cursor: history.canRedo ? 'pointer' : 'not-allowed',
-              fontSize: '11px',
-              minWidth: '40px'
-            }}
-            title="Redo (Ctrl+Y)"
-          >
-            Redo
-          </button>
-        </div>
-      </div>
-
-      {/* History Operations List */}
+      {/* Combined History Card */}
       <div style={{
         backgroundColor: '#2a2a2a',
         border: '1px solid #555',
         borderRadius: '4px',
         flex: 1,
         minHeight: 0,
-        overflowY: 'auto'
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        {historyOperations.length === 0 ? (
-          <div style={{
-            padding: '20px',
-            textAlign: 'center',
-            color: '#666',
-            fontSize: '12px'
-          }}>
-            No history yet
-          </div>
-        ) : (
-          historyOperations.map((operation) => (
-            <div
-              key={operation.id}
+        {/* History Header */}
+        <div style={{
+          padding: '8px 12px',
+          borderBottom: '1px solid #555',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexShrink: 0
+        }}>
+          <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            History
+          </span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={handleUndo}
+              disabled={!history.canUndo}
               style={{
-                padding: '8px 12px',
-                borderBottom: '1px solid #444',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
+                padding: '4px 8px',
+                backgroundColor: history.canUndo ? '#4a4a4a' : '#2a2a2a',
+                border: '1px solid #555',
+                borderRadius: '3px',
+                color: history.canUndo ? '#fff' : '#666',
+                cursor: history.canUndo ? 'pointer' : 'not-allowed',
+                fontSize: '11px',
+                minWidth: '40px'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a3a3a'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              onClick={() => {
-                if (operation.canUndo) {
-                  handleUndo()
-                } else if (operation.canRedo) {
-                  handleRedo()
-                }
-              }}
+              title="Undo (Ctrl+Z)"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {/* Tool Icon */}
-                <div style={{
-                  width: '16px',
-                  height: '16px',
-                  backgroundColor: operation.tool === 'fill' ? '#4CAF50' :
-                                   operation.tool === 'pencil' ? '#2196F3' : '#FF5722',
-                  borderRadius: '2px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '8px',
-                  color: '#fff',
-                  fontWeight: 'bold'
-                }}>
-                  {operation.tool.charAt(0).toUpperCase()}
-                </div>
+              Undo
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!history.canRedo}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: history.canRedo ? '#4a4a4a' : '#2a2a2a',
+                border: '1px solid #555',
+                borderRadius: '3px',
+                color: history.canRedo ? '#fff' : '#666',
+                cursor: history.canRedo ? 'pointer' : 'not-allowed',
+                fontSize: '11px',
+                minWidth: '40px'
+              }}
+              title="Redo (Ctrl+Y)"
+            >
+              Redo
+            </button>
+          </div>
+        </div>
 
-                {/* Thumbnail */}
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  border: '1px solid #555',
-                  borderRadius: '3px',
-                  overflow: 'hidden',
-                  flexShrink: 0
-                }}>
-                  <img 
-                    src={operation.thumbnail} 
-                    alt={`${operation.tool} operation`}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                </div>
-
-                {/* Operation Info */}
-                <div>
-                  <div style={{ color: '#fff', fontSize: '12px', fontWeight: '500' }}>
-                    {formatToolName(operation.tool)}
-                  </div>
-                  <div style={{ color: '#999', fontSize: '10px' }}>
-                    {formatTimestamp(operation.timestamp)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Indicator */}
-              <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: operation.canUndo ? '#4CAF50' : '#FF9800'
-              }} />
+        {/* History Operations List */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto'
+        }}>
+          {historyOperations.length === 0 ? (
+            <div style={{
+              padding: '20px',
+              textAlign: 'center',
+              color: '#666',
+              fontSize: '12px'
+            }}>
+              No history yet
             </div>
-          ))
-        )}
+          ) : (
+            historyOperations.map((operation) => (
+              <div
+                key={operation.id}
+                style={{
+                  padding: '8px 12px',
+                  borderBottom: '1px solid #444',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                onClick={() => {
+                  if (operation.canUndo) {
+                    handleUndo()
+                  } else if (operation.canRedo) {
+                    handleRedo()
+                  }
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Tool Icon */}
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: operation.tool === 'fill' ? '#4CAF50' :
+                                     operation.tool === 'pencil' ? '#2196F3' : '#FF5722',
+                    borderRadius: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '8px',
+                    color: '#fff',
+                    fontWeight: 'bold'
+                  }}>
+                    {operation.tool.charAt(0).toUpperCase()}
+                  </div>
+
+                  {/* Thumbnail */}
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    border: '1px solid #555',
+                    borderRadius: '3px',
+                    overflow: 'hidden',
+                    flexShrink: 0
+                  }}>
+                    <img 
+                      src={operation.thumbnail} 
+                      alt={`${operation.tool} operation`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
+
+                  {/* Operation Info */}
+                  <div>
+                    <div style={{ color: '#fff', fontSize: '12px', fontWeight: '500' }}>
+                      {formatToolName(operation.tool)}
+                    </div>
+                    <div style={{ color: '#999', fontSize: '10px' }}>
+                      {formatTimestamp(operation.timestamp)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Indicator */}
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: operation.canUndo ? '#4CAF50' : '#FF9800'
+                }} />
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )

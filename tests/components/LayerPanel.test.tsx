@@ -104,7 +104,7 @@ describe('LayerPanel', () => {
   it('should handle new layer creation', () => {
     render(<LayerPanel {...defaultProps} />)
     
-    const newLayerButton = screen.getByText('New Layer')
+    const newLayerButton = screen.getByTitle('New Layer')
     fireEvent.click(newLayerButton)
     
     expect(defaultProps.onNewLayer).toHaveBeenCalled()
@@ -150,8 +150,8 @@ describe('LayerPanel', () => {
     const layer1Container = screen.getByText('Layer 1').closest('.layer-item')
     expect(layer1Container).toHaveStyle({ backgroundColor: '#3a3a3a' })
     
-    // Layer 2 is not active, should have default styling
+    // Layer 2 is not active, should have transparent background
     const layer2Container = screen.getByText('Layer 2').closest('.layer-item')
-    expect(layer2Container).toHaveStyle({ backgroundColor: '#2a2a2a' })
+    expect(layer2Container).toHaveStyle({ backgroundColor: 'transparent' })
   })
 })

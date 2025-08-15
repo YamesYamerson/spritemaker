@@ -270,9 +270,7 @@ const FileMenu: React.FC<{
           fontSize: '14px',
           fontWeight: '500',
           width: '100%',
-          justifyContent: 'space-between',
-          borderBottomLeftRadius: isFileMenuOpen ? '0' : '4px',
-          borderBottomRightRadius: isFileMenuOpen ? '0' : '4px'
+          justifyContent: 'flex-start'
         }}
         onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
         title="File Menu - Click to open"
@@ -288,34 +286,41 @@ const FileMenu: React.FC<{
           <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
         </svg>
         <span>File</span>
-        {/* Dropdown Arrow */}
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          style={{
-            transform: isFileMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s ease'
-          }}
-        >
-          <path d="M7,10L12,15L17,10H7Z" />
-        </svg>
       </div>
 
-      {/* File Dropdown Menu */}
+      {/* File Modal Overlay */}
       {isFileMenuOpen && (
-        <div
-          style={{
-            backgroundColor: '#2a2a2a',
-            border: '1px solid #555',
-            borderTop: 'none',
-            borderRadius: '0 0 4px 4px',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-            zIndex: 1001,
-            position: 'relative'
-          }}
-        >
+        <>
+          {/* Backdrop */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1000
+            }}
+            onClick={() => setIsFileMenuOpen(false)}
+          />
+          
+          {/* Modal */}
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: '#2a2a2a',
+              border: '1px solid #555',
+              borderRadius: '8px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              zIndex: 1001,
+              minWidth: '300px',
+              maxWidth: '400px'
+            }}
+          >
           {/* File Operations */}
           <div
             style={{
@@ -515,7 +520,32 @@ const FileMenu: React.FC<{
               </button>
             ))}
           </div>
+          
+          {/* Close Button */}
+          <div style={{ 
+            padding: '12px', 
+            borderTop: '1px solid #555',
+            textAlign: 'center'
+          }}>
+            <button
+              onClick={() => setIsFileMenuOpen(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#555',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#666'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#555'}
+            >
+              Close
+            </button>
+          </div>
         </div>
+        </>
       )}
     </div>
   )

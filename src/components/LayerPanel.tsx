@@ -65,75 +65,123 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   onLayerSelect
 }) => {
   return (
-    <div className="layer-panel">
-      <h3>Layers</h3>
-      
-      {layers.map(layer => (
-        <div
-          key={layer.id}
-          className={`layer-item ${layer.active ? 'active' : ''}`}
-          onClick={() => onLayerSelect(layer.id)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px',
-            border: '1px solid #555',
-            borderRadius: '4px',
-            marginBottom: '8px',
-            cursor: 'pointer',
-            backgroundColor: layer.active ? '#3a3a3a' : '#2a2a2a',
-            transition: 'background-color 0.2s'
-          }}
-        >
-          <input
-            type="checkbox"
-            className="layer-visibility"
-            checked={layer.visible}
-            onChange={() => onLayerToggle(layer.id)}
-            onClick={(e) => e.stopPropagation()}
-            style={{ margin: 0 }}
-          />
-          
-          {/* Layer Thumbnail */}
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '1px solid #555',
-            borderRadius: '2px',
-            overflow: 'hidden',
-            flexShrink: 0
-          }}>
-            <img
-              src={generateLayerThumbnail(pixels, layer.id, canvasSize)}
-              alt={`${layer.name} thumbnail`}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain'
-              }}
-            />
-          </div>
-          
-          <span style={{ 
-            color: '#fff', 
-            fontSize: '12px',
-            flex: 1,
-            textAlign: 'left'
-          }}>
-            {layer.name}
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* Combined Layers Card */}
+      <div style={{
+        backgroundColor: '#2a2a2a',
+        border: '1px solid #555',
+        borderRadius: '4px',
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Layers Header */}
+        <div style={{
+          padding: '8px 12px',
+          borderBottom: '1px solid #555',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexShrink: 0
+        }}>
+          <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            Layers
           </span>
+          <button
+            onClick={onNewLayer}
+            style={{
+              padding: '4px 8px',
+              backgroundColor: '#4a4a4a',
+              border: '1px solid #555',
+              borderRadius: '3px',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              minWidth: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="New Layer"
+          >
+            +
+          </button>
         </div>
-      ))}
-      
-      <button
-        className="tool-button"
-        onClick={onNewLayer}
-        style={{ marginTop: '10px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
-      >
-        <img src="/icons/new.png" alt="New Layer" style={{ width: '16px', height: '16px' }} />
-        New Layer
-      </button>
+
+        {/* Layers List */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          padding: '8px'
+        }}>
+          {layers.map(layer => (
+            <div
+              key={layer.id}
+              className={`layer-item ${layer.active ? 'active' : ''}`}
+              onClick={() => onLayerSelect(layer.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                border: '1px solid #444',
+                borderRadius: '4px',
+                marginBottom: '8px',
+                cursor: 'pointer',
+                backgroundColor: layer.active ? '#3a3a3a' : 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              <input
+                type="checkbox"
+                className="layer-visibility"
+                checked={layer.visible}
+                onChange={() => onLayerToggle(layer.id)}
+                onClick={(e) => e.stopPropagation()}
+                style={{ margin: 0 }}
+              />
+              
+              {/* Layer Thumbnail */}
+              <div style={{
+                width: '32px',
+                height: '32px',
+                border: '1px solid #555',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                flexShrink: 0
+              }}>
+                <img
+                  src={generateLayerThumbnail(pixels, layer.id, canvasSize)}
+                  alt={`${layer.name} thumbnail`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain'
+                  }}
+                />
+              </div>
+              
+              <span style={{ 
+                color: '#fff', 
+                fontSize: '12px',
+                flex: 1,
+                textAlign: 'left'
+              }}>
+                {layer.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
