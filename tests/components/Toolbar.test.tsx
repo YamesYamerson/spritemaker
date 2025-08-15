@@ -68,6 +68,7 @@ describe('Toolbar', () => {
     expect(screen.getByTitle('Eraser')).toBeInTheDocument()
     expect(screen.getByTitle('Fill')).toBeInTheDocument()
     expect(screen.getByTitle('Eyedropper')).toBeInTheDocument()
+    expect(screen.getByTitle('Select')).toBeInTheDocument()
     expect(screen.getByTitle('Rectangle Tool - Currently Border')).toBeInTheDocument()
     expect(screen.getByTitle('Circle Tool - Currently Border')).toBeInTheDocument()
     expect(screen.getByTitle('Line')).toBeInTheDocument()
@@ -92,6 +93,15 @@ describe('Toolbar', () => {
     expect(defaultProps.onToolSelect).toHaveBeenCalledWith('eraser')
   })
 
+  it('should call onToolSelect when select tool is clicked', () => {
+    render(<Toolbar {...defaultProps} />)
+    
+    const selectButton = screen.getByTitle('Select')
+    fireEvent.click(selectButton)
+    
+    expect(defaultProps.onToolSelect).toHaveBeenCalledWith('select')
+  })
+
   it('should display grid toggle button', () => {
     render(<Toolbar {...defaultProps} />)
     
@@ -105,8 +115,8 @@ describe('Toolbar', () => {
     const gridButton = screen.getByTitle('Grid Options - Currently OFF')
     fireEvent.click(gridButton)
     
-    // Now click the "Show Grid" option in the dropdown
-    const showGridButton = screen.getByText('Show Grid')
+    // Now click the "Full Grid" option in the dropdown
+    const showGridButton = screen.getByText('Full Grid')
     fireEvent.click(showGridButton)
     
     expect(defaultProps.onGridSettingsChange).toHaveBeenCalledWith({
@@ -122,11 +132,11 @@ describe('Toolbar', () => {
     fireEvent.click(gridButton)
     
     // Should show dropdown options
-    expect(screen.getByText('Quarter Grid')).toBeInTheDocument()
-    expect(screen.getByText('Eighths Grid')).toBeInTheDocument()
-    expect(screen.getByText('Sixteenths Grid')).toBeInTheDocument()
-    expect(screen.getByText('Thirty-Second Grid')).toBeInTheDocument()
-    expect(screen.getByText('Sixty-Fourths Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/4 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/8 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/16 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/32 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/64 Grid')).toBeInTheDocument()
   })
 
   it('should activate quarter grid when selected from dropdown', () => {
@@ -135,7 +145,7 @@ describe('Toolbar', () => {
     const gridButton = screen.getByTitle('Grid Options - Currently OFF')
     fireEvent.click(gridButton)
     
-    const quarterButton = screen.getByText('Quarter Grid')
+    const quarterButton = screen.getByText('1/4 Grid')
     fireEvent.click(quarterButton)
     
     expect(defaultProps.onGridSettingsChange).toHaveBeenCalledWith({
@@ -158,9 +168,12 @@ describe('Toolbar', () => {
     fireEvent.click(gridButton)
     
     // Should show dropdown options
-    expect(screen.getByText('Show Grid')).toBeInTheDocument()
-    expect(screen.getByText('Quarter Grid')).toBeInTheDocument()
-    expect(screen.getByText('Eighths Grid')).toBeInTheDocument()
+    expect(screen.getByText('Full Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/4 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/8 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/16 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/32 Grid')).toBeInTheDocument()
+    expect(screen.getByText('1/64 Grid')).toBeInTheDocument()
   })
 
   it('should display color indicator with primary and secondary colors', () => {

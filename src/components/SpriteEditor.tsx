@@ -54,6 +54,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     currentPos: { x: number; y: number }
   } | null>(null)
 
+  // State for selection tool
+  const [selection, setSelection] = useState<{
+    startPos: { x: number; y: number }
+    currentPos: { x: number; y: number }
+    isActive: boolean
+    lastHistoryBounds?: { startX: number; startY: number; endX: number; endY: number }
+  } | null>(null)
+
   const activeLayer = layers.find(l => l.visible && l.active)
   const pixelSize = Math.max(1, Math.floor(512 / canvasSize))
 
@@ -67,6 +75,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
   }, [onCanvasRef])
 
+  // Handle keyboard events for selection management
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selection) {
+        setSelection(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selection])
+
   // Notify parent of pixel changes
   useEffect(() => {
     if (onPixelsChange) {
@@ -78,6 +100,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   useEffect(() => {
     setPixels(new Map())
     setLastPos(null)
+    setSelection(null)
     historyManagerRef.current.clear()
     setCurrentDrawingAction({
       tool: 'pencil',
@@ -86,6 +109,13 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       isActive: false
     })
   }, [canvasSize])
+
+  // Clear selection when switching away from select tool
+  useEffect(() => {
+    if (selectedTool !== 'select' && selection) {
+      setSelection(null)
+    }
+  }, [selectedTool]) // Remove selection from dependencies to prevent infinite loop
 
   // Draw function with history tracking
   const drawPixel = useCallback((x: number, y: number, color: Color, recordHistory: boolean = true) => {
@@ -424,6 +454,24 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   // Apply a stroke operation (for undo/redo)
   const applyStrokeOperation = useCallback((operation: StrokeOperation, reverse: boolean = false) => {
+    // Handle selection operations
+    if (operation.tool === 'select' && operation.metadata?.selectionBounds) {
+      if (reverse) {
+        // Undo: clear the selection
+        setSelection(null)
+      } else {
+        // Redo: restore the selection
+        const bounds = operation.metadata.selectionBounds
+        setSelection({
+          startPos: { x: bounds.startX, y: bounds.startY },
+          currentPos: { x: bounds.endX, y: bounds.endY },
+          isActive: true
+        })
+      }
+      return
+    }
+    
+    // Handle pixel-based operations
     const newPixels = new Map(pixels)
     
     operation.pixels.forEach(({ x, y, previousColor, newColor }) => {
@@ -588,6 +636,11 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
     
+    // Clear existing selection if clicking outside of it (unless we're using the select tool)
+    if (selection && selectedTool !== 'select') {
+      setSelection(null)
+    }
+    
     setIsDrawing(true)
     setLastPos({ x, y })
     
@@ -624,6 +677,16 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
       // Don't create a drawing action yet - wait for mouse up
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else if (selectedTool === 'select') {
+      // For select tool, start tracking the selection rectangle
+      setSelection({
+        startPos: { x, y },
+        currentPos: { x, y },
+        isActive: true,
+        lastHistoryBounds: undefined // No history entry yet
+      })
+      // Don't create a drawing action - selection is just visual
+      setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
     } else {
       // For drawing tools (pencil, eraser), draw the initial pixel
       if (selectedTool === 'pencil') {
@@ -648,6 +711,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     // Handle shape preview updates
     if (shapePreview && (selectedTool === 'rectangle-border' || selectedTool === 'rectangle-filled' || selectedTool === 'circle-border' || selectedTool === 'circle-filled' || selectedTool === 'line')) {
       setShapePreview(prev => prev ? { ...prev, currentPos: { x, y } } : null)
+      return
+    }
+    
+    // Handle selection updates
+    if (selection && selectedTool === 'select') {
+      setSelection(prev => prev ? { ...prev, currentPos: { x, y } } : null)
       return
     }
     
@@ -821,6 +890,50 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       
       // Clear shape preview
       setShapePreview(null)
+    }
+    
+    // Handle selection completion
+    if (selection && selectedTool === 'select') {
+      // Calculate current selection bounds
+      const currentBounds = {
+        startX: Math.min(selection.startPos.x, selection.currentPos.x),
+        startY: Math.min(selection.startPos.y, selection.currentPos.y),
+        endX: Math.max(selection.startPos.x, selection.currentPos.x),
+        endY: Math.max(selection.startPos.y, selection.currentPos.y)
+      }
+      
+      // Only create history entry if the selection area has actually changed
+      const hasSelectionChanged = !selection.lastHistoryBounds || 
+        selection.lastHistoryBounds.startX !== currentBounds.startX ||
+        selection.lastHistoryBounds.startY !== currentBounds.startY ||
+        selection.lastHistoryBounds.endX !== currentBounds.endX ||
+        selection.lastHistoryBounds.endY !== currentBounds.endY
+      
+      if (hasSelectionChanged) {
+        const operation = historyManagerRef.current.createStrokeOperation(
+          'select',
+          activeLayer!.id,
+          [] // No pixel changes for selections
+        )
+        
+        // Store the selection bounds in metadata for history display
+        operation.metadata = {
+          selectionBounds: currentBounds
+        }
+        
+        historyManagerRef.current.pushOperation(operation)
+        dispatchHistoryChange()
+        
+        // Update the last history bounds to prevent duplicate entries
+        setSelection(prev => prev ? {
+          ...prev,
+          lastHistoryBounds: currentBounds
+        } : null)
+      }
+      
+      // Keep the selection persistent - don't clear it
+      // The selection will remain visible until explicitly cleared
+      // In the future, this could trigger copy/cut operations or other selection-based actions
     }
     
     // Complete the drawing action and create history entry for other tools
@@ -1188,7 +1301,32 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       
       ctx.globalAlpha = 1.0
     }
-  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor])
+    
+    // Draw selection rectangle
+    if (selection && selectedTool === 'select') {
+      const { startPos, currentPos } = selection
+      ctx.strokeStyle = '#1e3a8a' // Dark blue selection outline
+      ctx.lineWidth = 2
+      ctx.globalAlpha = 0.8
+      
+      const minX = Math.min(startPos.x, currentPos.x) * pixelSize
+      const maxX = Math.max(startPos.x, currentPos.x) * pixelSize
+      const minY = Math.min(startPos.y, currentPos.y) * pixelSize
+      const maxY = Math.max(startPos.y, currentPos.y) * pixelSize
+      
+      // Draw selection rectangle (dashed if supported, solid otherwise)
+      if (ctx.setLineDash) {
+        ctx.setLineDash([5, 5])
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+        ctx.setLineDash([]) // Reset to solid line
+      } else {
+        // Fallback to solid line if setLineDash is not supported
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+      }
+      
+      ctx.globalAlpha = 1.0
+    }
+  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool])
 
   return (
     <div className="canvas-container">

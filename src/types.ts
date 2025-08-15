@@ -1,4 +1,4 @@
-export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line'
+export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select'
 
 export type Color = string
 
@@ -28,6 +28,14 @@ export interface StrokeOperation {
     newColor: Color
   }>
   timestamp: number
+  metadata?: {
+    selectionBounds?: {
+      startX: number
+      startY: number
+      endX: number
+      endY: number
+    }
+  }
 }
 
 export interface HistoryState {
