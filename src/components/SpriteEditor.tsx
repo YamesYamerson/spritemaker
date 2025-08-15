@@ -47,6 +47,13 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     isActive: false
   })
 
+  // State for shape drawing (rectangle, circle)
+  const [shapePreview, setShapePreview] = useState<{
+    tool: Tool
+    startPos: { x: number; y: number }
+    currentPos: { x: number; y: number }
+  } | null>(null)
+
   const activeLayer = layers.find(l => l.visible && l.active)
   const pixelSize = Math.max(1, Math.floor(512 / canvasSize))
 
@@ -164,6 +171,158 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     })
   }, [pixels, activeLayer, currentDrawingAction.isActive, brushSize, canvasSize, currentBrushPattern])
+
+  // Draw rectangle between two points
+  const drawRectangle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color) => {
+    if (!activeLayer) return new Map(pixels)
+    
+    const minX = Math.min(startX, endX)
+    const maxX = Math.max(startX, endX)
+    const minY = Math.min(startY, endY)
+    const maxY = Math.max(startY, endY)
+    
+    const newPixels = new Map(pixels)
+    
+    for (let y = minY; y < maxY; y++) {
+      for (let x = minX; x < maxX; x++) {
+        if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) continue
+        
+        const key = `${x},${y}`
+        const existingPixel = pixels.get(key)
+        
+        if (color === 'transparent') {
+          if (existingPixel) {
+            newPixels.delete(key)
+          }
+        } else {
+          newPixels.set(key, {
+            x,
+            y,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+    }
+    
+    setPixels(newPixels)
+    return newPixels
+  }, [pixels, activeLayer, canvasSize])
+
+  // Draw circle based on bounding box (using midpoint circle algorithm)
+  const drawCircle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color) => {
+    if (!activeLayer) return new Map(pixels)
+    
+    // Calculate center as the middle of the bounding box
+    const centerX = Math.floor((startX + endX) / 2)
+    const centerY = Math.floor((startY + endY) / 2)
+    
+    // Calculate radius as the distance from center to any corner of the bounding box
+    const radius = Math.max(1, Math.floor(Math.sqrt((endX - centerX) ** 2 + (endY - centerY) ** 2)))
+    
+    const newPixels = new Map(pixels)
+    
+    // Midpoint circle algorithm
+    let x = radius
+    let y = 0
+    let err = 0
+    
+    while (x >= y) {
+      // Draw 8 octants
+      const points = [
+        [centerX + x, centerY + y], [centerX + y, centerY + x],
+        [centerX - y, centerY + x], [centerX - x, centerY + y],
+        [centerX - x, centerY - y], [centerX - y, centerY - x],
+        [centerX + y, centerY - x], [centerX + x, centerY - y]
+      ]
+      
+      for (const [px, py] of points) {
+        if (px < 0 || px >= canvasSize || py < 0 || py >= canvasSize) continue
+        
+        const key = `${px},${py}`
+        const existingPixel = pixels.get(key)
+        
+        if (color === 'transparent') {
+          if (existingPixel) {
+            newPixels.delete(key)
+          }
+        } else {
+          newPixels.set(key, {
+            x: px,
+            y: py,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+      
+      if (err <= 0) {
+        y += 1
+        err += 2 * y + 1
+      }
+      if (err > 0) {
+        x -= 1
+        err -= 2 * x + 1
+      }
+    }
+    
+    setPixels(newPixels)
+    return newPixels
+  }, [pixels, activeLayer, canvasSize])
+
+  // Draw line between two points using Bresenham's algorithm
+  const drawLine = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color) => {
+    if (!activeLayer) return new Map(pixels)
+    
+    const newPixels = new Map(pixels)
+    
+    // Use Bresenham's line algorithm
+    let x0 = startX
+    let y0 = startY
+    let x1 = endX
+    let y1 = endY
+    
+    const dx = Math.abs(x1 - x0)
+    const dy = Math.abs(y1 - y0)
+    const sx = x0 < x1 ? 1 : -1
+    const sy = y0 < y1 ? 1 : -1
+    let err = dx - dy
+    
+    while (true) {
+      if (x0 >= 0 && x0 < canvasSize && y0 >= 0 && y0 < canvasSize) {
+        const key = `${x0},${y0}`
+        const existingPixel = pixels.get(key)
+        
+        if (color === 'transparent') {
+          if (existingPixel) {
+            newPixels.delete(key)
+          }
+        } else {
+          newPixels.set(key, {
+            x: x0,
+            y: y0,
+            color,
+            layerId: activeLayer.id
+          })
+        }
+      }
+      
+      if (x0 === x1 && y0 === y1) break
+      
+      const e2 = 2 * err
+      if (e2 > -dy) {
+        err -= dy
+        x0 += sx
+      }
+      if (e2 < dx) {
+        err += dx
+        y0 += sy
+      }
+    }
+    
+    setPixels(newPixels)
+    return newPixels
+  }, [pixels, activeLayer, canvasSize])
 
   // New method for drawing with brush patterns that takes drawing action as parameter
   const drawWithBrushPatternWithAction = useCallback((x: number, y: number, color: Color, drawingAction: any) => {
@@ -395,6 +554,15 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
       // Eyedropper doesn't create a drawing action, so reset
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else if (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'line') {
+      // For shape tools, start tracking the shape preview
+      setShapePreview({
+        tool: selectedTool,
+        startPos: { x, y },
+        currentPos: { x, y }
+      })
+      // Don't create a drawing action yet - wait for mouse up
+      setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
     } else {
       // For drawing tools (pencil, eraser), draw the initial pixel
       if (selectedTool === 'pencil') {
@@ -408,7 +576,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !lastPos || !activeLayer || !currentDrawingAction.isActive) return
+    if (!isDrawing || !lastPos || !activeLayer) return
     
     const rect = canvasRef.current!.getBoundingClientRect()
     const x = Math.floor((e.clientX - rect.left) / pixelSize)
@@ -416,7 +584,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) return
     
-    if (selectedTool === 'pencil' || selectedTool === 'eraser') {
+    // Handle shape preview updates
+    if (shapePreview && (selectedTool === 'rectangle' || selectedTool === 'circle' || selectedTool === 'line')) {
+      setShapePreview(prev => prev ? { ...prev, currentPos: { x, y } } : null)
+      return
+    }
+    
+    // Handle drawing tools (pencil, eraser)
+    if (currentDrawingAction.isActive && (selectedTool === 'pencil' || selectedTool === 'eraser')) {
       // Always interpolate to ensure no gaps, regardless of distance
       const dx = Math.abs(x - lastPos.x)
       const dy = Math.abs(y - lastPos.y)
@@ -504,7 +679,90 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setIsDrawing(false)
     setLastPos(null)
     
-    // Complete the drawing action and create history entry
+    // Handle shape completion
+    if (shapePreview) {
+      const { tool, startPos, currentPos } = shapePreview
+      
+      // Capture canvas state BEFORE drawing the shape
+      const canvasStateBeforeDrawing = new Map(pixels)
+      
+      // Create a drawing action for the shape
+      const drawingAction = {
+        tool,
+        startPos: startPos,
+        canvasStateBeforeDrawing,
+        isActive: true
+      }
+      
+      // Draw the shape and capture the new pixels
+      let newPixels: Map<string, PixelData>
+      
+      if (tool === 'rectangle') {
+        newPixels = drawRectangle(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor)
+      } else if (tool === 'circle') {
+        newPixels = drawCircle(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor)
+      } else if (tool === 'line') {
+        newPixels = drawLine(startPos.x, startPos.y, currentPos.x, currentPos.y, primaryColor)
+      } else {
+        newPixels = new Map(pixels)
+      }
+      
+      // Complete the drawing action and create history entry
+      if (drawingAction.canvasStateBeforeDrawing && newPixels) {
+        const initialPixels = drawingAction.canvasStateBeforeDrawing
+        const finalPixels = newPixels
+        
+        // Calculate the differences between initial and final states
+        const pixelChanges: Array<{
+          x: number
+          y: number
+          previousColor: Color
+          newColor: Color
+        }> = []
+        
+        // Check all pixels in the final state
+        finalPixels.forEach((pixel, key) => {
+          const initialPixel = initialPixels.get(key)
+          const initialColor = initialPixel ? initialPixel.color : 'transparent'
+          
+          if (initialColor !== pixel.color) {
+            pixelChanges.push({
+              x: pixel.x,
+              y: pixel.y,
+              previousColor: initialColor,
+              newColor: pixel.color
+            })
+          }
+        })
+        
+        // Check pixels that were in initial state but not in final state (deleted pixels)
+        initialPixels.forEach((pixel, key) => {
+          if (!finalPixels.has(key)) {
+            pixelChanges.push({
+              x: pixel.x,
+              y: pixel.y,
+              previousColor: pixel.color,
+              newColor: 'transparent'
+            })
+          }
+        })
+        
+        if (pixelChanges.length > 0) {
+          const operation = historyManagerRef.current.createStrokeOperation(
+            drawingAction.tool,
+            activeLayer!.id,
+            pixelChanges
+          )
+          historyManagerRef.current.pushOperation(operation)
+          dispatchHistoryChange() // Dispatch history change event
+        }
+      }
+      
+      // Clear shape preview
+      setShapePreview(null)
+    }
+    
+    // Complete the drawing action and create history entry for other tools
     if (currentDrawingAction.isActive && currentDrawingAction.canvasStateBeforeDrawing) {
       const initialPixels = currentDrawingAction.canvasStateBeforeDrawing
       const finalPixels = new Map(pixels)
@@ -812,7 +1070,49 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         )
       }
     })
-  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths])
+    
+    // Draw shape preview
+    if (shapePreview) {
+      const { tool, startPos, currentPos } = shapePreview
+      ctx.strokeStyle = primaryColor
+      ctx.lineWidth = 2
+      ctx.globalAlpha = 0.7
+      
+      if (tool === 'rectangle') {
+        const minX = Math.min(startPos.x, currentPos.x) * pixelSize
+        const maxX = Math.max(startPos.x, currentPos.x) * pixelSize
+        const minY = Math.min(startPos.y, currentPos.y) * pixelSize
+        const maxY = Math.max(startPos.y, currentPos.y) * pixelSize
+        
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+      } else if (tool === 'circle') {
+        // Draw bounding box preview
+        const minX = Math.min(startPos.x, currentPos.x) * pixelSize
+        const maxX = Math.max(startPos.x, currentPos.x) * pixelSize
+        const minY = Math.min(startPos.y, currentPos.y) * pixelSize
+        const maxY = Math.max(startPos.y, currentPos.y) * pixelSize
+        
+        // Draw rectangle outline
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+        
+        // Draw circle preview inside the bounding box
+        const centerX = Math.floor((startPos.x + currentPos.x) / 2) * pixelSize
+        const centerY = Math.floor((startPos.y + currentPos.y) / 2) * pixelSize
+        const radius = Math.max(1, Math.sqrt((currentPos.x - centerX / pixelSize) ** 2 + (currentPos.y - centerY / pixelSize) ** 2)) * pixelSize
+        
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
+        ctx.stroke()
+      } else if (tool === 'line') {
+        ctx.beginPath()
+        ctx.moveTo(startPos.x * pixelSize, startPos.y * pixelSize)
+        ctx.lineTo(currentPos.x * pixelSize, currentPos.y * pixelSize)
+        ctx.stroke()
+      }
+      
+      ctx.globalAlpha = 1.0
+    }
+  }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor])
 
   return (
     <div className="canvas-container">
