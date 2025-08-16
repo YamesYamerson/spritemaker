@@ -5,13 +5,11 @@ import SaveTemplateModal from './SaveTemplateModal'
 import { TemplateManager } from '../utils/templateManager'
 
 interface TemplatePanelProps {
-  onTemplateSelect?: (template: SavedTemplate) => void
   currentCanvasSize?: number
   canvasRef?: React.RefObject<HTMLCanvasElement>
 }
 
 const TemplatePanel: React.FC<TemplatePanelProps> = ({ 
-  onTemplateSelect, 
   currentCanvasSize = 32,
   canvasRef
 }) => {
@@ -20,63 +18,20 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<SavedTemplate | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [templates, setTemplates] = useState<SavedTemplate[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
   const templateManager = TemplateManager.getInstance()
 
-  console.log('TemplatePanel rendering with:', { currentCanvasSize, canvasRef: !!canvasRef?.current })
+
 
   // Load templates on mount
   useEffect(() => {
-    console.log('TemplatePanel useEffect running')
     loadTemplates()
-    
-    // Create a sample template if none exist (for testing)
-    if (templateManager.getAllTemplates().length === 0) {
-      console.log('Creating sample template...')
-      createSampleTemplate()
-    }
   }, [])
 
-  const createSampleTemplate = () => {
-    // Create sample templates for different canvas sizes
-    const sizes = [16, 32, 64, 128, 256]
-    
-    sizes.forEach(size => {
-      // Only create if no templates exist for this size
-      const existingTemplates = templateManager.getTemplatesBySize(size, size)
-      if (existingTemplates.length === 0) {
-        console.log(`Creating sample template for ${size}x${size}...`)
-        
-        const samplePixels = new Map<string, any>()
-        
-        // Create a simple cross pattern that scales with canvas size
-        const center = Math.floor(size / 2)
-        const crossSize = Math.max(2, Math.floor(size / 8)) // Scale cross size with canvas
-        
-        for (let i = center - crossSize; i < center + crossSize; i++) {
-          if (i >= 0 && i < size) {
-            samplePixels.set(`${i},${center}`, { x: i, y: center, color: '#FF0000', layerId: 1 })
-            samplePixels.set(`${center},${i}`, { x: center, y: i, color: '#FF0000', layerId: 1 })
-          }
-        }
-        
-        const sampleTemplate = templateManager.saveTemplate(
-          `Sample Cross ${size}x${size}`,
-          `A simple red cross pattern for ${size}x${size} canvas`,
-          size,
-          size,
-          samplePixels,
-          ['sample', 'test', 'cross', `${size}x${size}`]
-        )
-        
-        console.log(`Created sample template for ${size}x${size}:`, sampleTemplate)
-      }
-    })
-    
-    loadTemplates()
-  }
+
 
   const loadTemplates = () => {
     const allTemplates = templateManager.getAllTemplates()
@@ -84,15 +39,12 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   }
 
   const handleTemplateSelect = (template: SavedTemplate) => {
-    console.log('Template selected:', template.name)
     setSelectedTemplate(template)
     setShowConfirmModal(true)
   }
 
   const handleConfirmTemplate = async () => {
-    console.log('handleConfirmTemplate called')
     if (!selectedTemplate || !canvasRef?.current) {
-      console.log('Missing selectedTemplate or canvasRef:', { selectedTemplate: !!selectedTemplate, canvasRef: !!canvasRef?.current })
       setShowConfirmModal(false)
       return
     }
@@ -108,10 +60,6 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     try {
       setIsLoading(true)
       
-      console.log(`Applying template: ${selectedTemplate.name}`)
-      console.log('Canvas ref:', canvasRef.current)
-      console.log('Available methods:', Object.getOwnPropertyNames(canvasRef.current))
-      
       // Convert template pixels to Map format
       const templatePixels = new Map<string, any>()
       selectedTemplate.pixels.forEach(pixel => {
@@ -119,21 +67,13 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         templatePixels.set(key, pixel)
       })
       
-      console.log(`Template has ${templatePixels.size} pixels`)
-      console.log('Template pixels:', Array.from(templatePixels.entries()))
-      
       // Check if applyTemplate method exists
       if (typeof (canvasRef.current as any).applyTemplate === 'function') {
-        console.log('Calling applyTemplate method...')
         ;(canvasRef.current as any).applyTemplate(templatePixels)
-        console.log('applyTemplate called successfully')
       } else {
         console.error('applyTemplate method not found on canvas')
-        console.log('Canvas methods:', Object.getOwnPropertyNames(canvasRef.current))
         alert('Template application method not available')
       }
-      
-      console.log(`Template "${selectedTemplate.name}" applied successfully`)
     } catch (error) {
       console.error('Failed to apply template:', error)
       alert('Failed to apply template. Please try again.')
@@ -156,6 +96,8 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     }
 
     try {
+      setIsSaving(true)
+      
       // Get current canvas pixels and size
       const currentPixels = (canvasRef.current as any).getCurrentPixels?.()
       const canvasSize = (canvasRef.current as any).getCanvasSize?.()
@@ -169,7 +111,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
       const sizeTag = `${canvasSize}x${canvasSize}`
       const updatedTags = tags.includes(sizeTag) ? tags : [...tags, sizeTag]
 
-      const savedTemplate = await templateManager.saveTemplate(
+      await templateManager.saveTemplate(
         name,
         description,
         canvasSize,
@@ -178,12 +120,13 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         updatedTags
       )
       
-      console.log('Template saved:', savedTemplate)
       loadTemplates() // Refresh the list
       alert(`Template "${name}" saved successfully for ${canvasSize}x${canvasSize} canvas!`)
     } catch (error) {
       console.error('Failed to save template:', error)
       alert('Failed to save template. Please try again.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -290,20 +233,22 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
           </span>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
-              onClick={() => setShowSaveModal(true)}
+              onClick={() => !isSaving && setShowSaveModal(true)}
+              disabled={isSaving}
               style={{
                 padding: '4px 8px',
-                backgroundColor: '#007acc',
-                border: '1px solid #007acc',
+                backgroundColor: isSaving ? '#666' : '#007acc',
+                border: `1px solid ${isSaving ? '#666' : '#007acc'}`,
                 borderRadius: '3px',
                 color: '#fff',
-                cursor: 'pointer',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
                 fontSize: '12px',
-                fontWeight: '500'
+                fontWeight: '500',
+                opacity: isSaving ? 0.6 : 1
               }}
               title="Save Current Canvas as Template"
             >
-              Save
+              {isSaving ? 'Saving...' : 'Save'}
             </button>
             <button
               onClick={() => setIsCollapsed(true)}
@@ -507,9 +452,10 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
       {/* Save Template Modal */}
       <SaveTemplateModal
         isOpen={showSaveModal}
-        onClose={() => setShowSaveModal(false)}
+        onClose={() => !isSaving && setShowSaveModal(false)}
         onSave={handleSaveTemplate}
         canvasSize={currentCanvasSize}
+        isLoading={isSaving}
       />
 
       {/* Confirm Template Application Modal */}
@@ -519,8 +465,9 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         onConfirm={handleConfirmTemplate}
         title="Apply Template"
         message={`Are you sure you want to apply the template "${selectedTemplate?.name}"? This will replace your current canvas content.`}
-        confirmText="Apply Template"
+        confirmText={isLoading ? "Applying..." : "Apply Template"}
         cancelText="Cancel"
+        disabled={isLoading}
       />
     </>
   )

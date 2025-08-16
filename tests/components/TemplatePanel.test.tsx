@@ -197,13 +197,16 @@ describe('TemplatePanel', () => {
     expect(screen.getByText('Current Canvas: 32x32')).toBeInTheDocument()
   })
 
-  it('creates sample templates when none exist', () => {
+  it('shows appropriate message when no templates exist', () => {
     mockTemplateManager.getAllTemplates.mockReturnValue([])
     mockTemplateManager.getTemplatesBySize.mockReturnValue([])
     
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
-    // Should create sample templates
-    expect(mockTemplateManager.saveTemplate).toHaveBeenCalled()
+    // Should show message about creating templates manually
+    expect(screen.getByText('No templates for 32x32 canvas. Create one by drawing and saving!')).toBeInTheDocument()
+    
+    // Should not create any sample templates automatically
+    expect(mockTemplateManager.saveTemplate).not.toHaveBeenCalled()
   })
 })

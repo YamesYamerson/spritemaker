@@ -5,13 +5,15 @@ interface SaveTemplateModalProps {
   onClose: () => void
   onSave: (name: string, description: string, tags: string[]) => void
   canvasSize: number
+  isLoading?: boolean
 }
 
 const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  canvasSize
+  canvasSize,
+  isLoading = false
 }) => {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -190,18 +192,20 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
           </button>
           <button
             onClick={handleSave}
+            disabled={isLoading}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#007acc',
-              border: '1px solid #007acc',
+              backgroundColor: isLoading ? '#666' : '#007acc',
+              border: `1px solid ${isLoading ? '#666' : '#007acc'}`,
               borderRadius: '4px',
               color: '#fff',
-              cursor: 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
               fontSize: '14px',
-              fontWeight: '500'
+              fontWeight: '500',
+              opacity: isLoading ? 0.6 : 1
             }}
           >
-            Save Template
+            {isLoading ? 'Saving...' : 'Save Template'}
           </button>
         </div>
 

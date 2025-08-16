@@ -88,12 +88,7 @@ function App() {
     console.log('Settings clicked')
   }
 
-  // Template handler
-  const handleTemplateSelect = (template: any) => {
-    // For now, just log the template selection
-    // The actual template application is handled by TemplatePanel directly
-    console.log('Template selected:', template.name, 'Size:', template.width + 'x' + template.height)
-  }
+
 
   return (
     <div className="App" style={{ 
@@ -259,7 +254,6 @@ function App() {
         }}>
           <ErrorBoundary>
             <TemplatePanel
-              onTemplateSelect={handleTemplateSelect}
               currentCanvasSize={canvasSize}
               canvasRef={canvasRef || undefined}
             />

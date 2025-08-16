@@ -8,6 +8,7 @@ interface ConfirmModalProps {
   onCancel: () => void
   confirmText?: string
   cancelText?: string
+  disabled?: boolean
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -17,7 +18,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
   confirmText = 'Yes',
-  cancelText = 'No'
+  cancelText = 'No',
+  disabled = false
 }) => {
   console.log('ConfirmModal rendering:', { isOpen, title })
 
@@ -85,15 +87,17 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </button>
           <button
             onClick={onConfirm}
+            disabled={disabled}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#4a7cff',
+              backgroundColor: disabled ? '#666' : '#4a7cff',
               border: '1px solid #555',
               borderRadius: '4px',
               color: '#fff',
-              cursor: 'pointer',
+              cursor: disabled ? 'not-allowed' : 'pointer',
               fontSize: '14px',
-              fontWeight: '500'
+              fontWeight: '500',
+              opacity: disabled ? 0.6 : 1
             }}
           >
             {confirmText}
