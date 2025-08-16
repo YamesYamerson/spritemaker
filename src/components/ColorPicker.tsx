@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { Color } from '../types'
 import { 
   hsvToRgb, 
@@ -124,7 +124,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
   }, [onPrimaryColorChange])
 
 
-  // Draw gradient canvas - only when hue changes
+  // Draw gradient canvas - when hue changes OR when component becomes visible
   useEffect(() => {
     const canvas = gradientRef.current
     if (!canvas) return
@@ -153,9 +153,9 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         }
       }
     }
-  }, [hue])
+  }, [hue, isCollapsed])
 
-  // Draw hue bar - only once on mount
+  // Draw hue bar - when component becomes visible
   useEffect(() => {
     const canvas = hueRef.current
     if (!canvas) return
@@ -180,7 +180,64 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         safeFillRect(ctx, x, 0, 1, height, '#000000')
       }
     }
-  }, []) // Empty dependency array - only run once
+  }, [isCollapsed]) // Redraw when collapse state changes
+
+  // Ensure canvas redraws after DOM updates when expanding
+  useLayoutEffect(() => {
+    if (!isCollapsed) {
+      // Small delay to ensure DOM is fully rendered
+      const timer = setTimeout(() => {
+        // Force redraw of both canvases
+        const gradientCanvas = gradientRef.current
+        const hueCanvas = hueRef.current
+        
+        if (gradientCanvas) {
+          const ctx = gradientCanvas.getContext('2d')
+          if (ctx) {
+            const width = gradientCanvas.width
+            const height = gradientCanvas.height
+            ctx.clearRect(0, 0, width, height)
+            
+            // Redraw gradient
+            for (let x = 0; x < width; x++) {
+              for (let y = 0; y < height; y++) {
+                const s = (x / width) * 100
+                const v = ((height - y) / height) * 100
+                try {
+                  const color = hsvToRgb(hue, s, v)
+                  safeFillRect(ctx, x, y, 1, 1, color)
+                } catch (error) {
+                  safeFillRect(ctx, x, y, 1, 1, '#000000')
+                }
+              }
+            }
+          }
+        }
+        
+        if (hueCanvas) {
+          const ctx = hueCanvas.getContext('2d')
+          if (ctx) {
+            const width = hueCanvas.width
+            const height = hueCanvas.height
+            ctx.clearRect(0, 0, width, height)
+            
+            // Redraw hue bar
+            for (let x = 0; x < width; x++) {
+              const h = (x / width) * 360
+              try {
+                const color = hsvToRgb(h, 100, 100)
+                safeFillRect(ctx, x, 0, 1, height, color)
+              } catch (error) {
+                safeFillRect(ctx, x, 0, 1, height, '#000000')
+              }
+            }
+          }
+        }
+      }, 50)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [isCollapsed, hue])
 
 
 

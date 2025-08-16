@@ -181,7 +181,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
   return (
     <div style={{
       width: '100%',
-      height: '100%',
+      height: isCollapsed ? 'auto' : '200px',
       display: 'flex',
       flexDirection: 'column'
     }}>
@@ -190,7 +190,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
         backgroundColor: '#2a2a2a',
         border: '1px solid #555',
         borderRadius: '4px',
-        flex: 1,
+        height: isCollapsed ? 'auto' : '200px', // Compact height for 3-4 items
+        maxHeight: isCollapsed ? 'auto' : '200px',
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column'
@@ -282,7 +283,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
         {/* History Operations List */}
         {!isCollapsed && (
           <div style={{
-            flex: 1,
+            height: '160px', // Fixed height for content area
             minHeight: 0,
             overflowY: 'auto'
           }}>

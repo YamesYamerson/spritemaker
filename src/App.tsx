@@ -231,7 +231,7 @@ function App() {
         {/* History Panel - Below Layer Panel */}
         <div style={{ 
           width: '100%',
-          flex: 1,
+          height: '200px', // Fixed height to match HistoryPanel
           minHeight: 0,
           overflow: 'hidden'
         }}>
