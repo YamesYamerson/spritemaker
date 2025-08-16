@@ -149,7 +149,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
     setSelectedTemplate(null)
   }
 
-  const handleSaveTemplate = (name: string, description: string, tags: string[]) => {
+  const handleSaveTemplate = async (name: string, description: string, tags: string[]) => {
     if (!canvasRef?.current) {
       alert('Canvas reference not available')
       return
@@ -169,7 +169,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
       const sizeTag = `${canvasSize}x${canvasSize}`
       const updatedTags = tags.includes(sizeTag) ? tags : [...tags, sizeTag]
 
-      const savedTemplate = templateManager.saveTemplate(
+      const savedTemplate = await templateManager.saveTemplate(
         name,
         description,
         canvasSize,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 interface SaveTemplateModalProps {
   isOpen: boolean
@@ -16,6 +16,15 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
+
+  // Reset form when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setName('')
+      setDescription('')
+      setTags('')
+    }
+  }, [isOpen])
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -194,6 +203,19 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
           >
             Save Template
           </button>
+        </div>
+
+        {/* Simple instructions */}
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#3a3a3a',
+          border: '1px solid #555',
+          borderRadius: '4px',
+          fontSize: '12px',
+          color: '#aaa'
+        }}>
+          <strong>Template will be saved to:</strong> <code>public/templates/{canvasSize}x{canvasSize}/</code>
         </div>
       </div>
     </div>

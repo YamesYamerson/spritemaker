@@ -68,7 +68,9 @@ describe('ColorPicker', () => {
   it('should handle color swatch clicks', () => {
     render(<ColorPicker {...defaultProps} />)
     
-    const colorSwatches = screen.getAllByRole('button', { hidden: true })
+    // Color swatches are rendered as divs with specific styling
+    // Look for divs that have background colors and are clickable
+    const colorSwatches = document.querySelectorAll('div[style*="cursor: pointer"]')
     expect(colorSwatches.length).toBeGreaterThan(0)
     
     // Click on the first color swatch

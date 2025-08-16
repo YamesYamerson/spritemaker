@@ -213,7 +213,6 @@ Object.defineProperty(navigator, 'onLine', {
 
 // Reset mocks before each test
 beforeEach(() => {
-  (localStorage as any)._reset();
   (global.fetch as jest.Mock).mockClear();
   
   // Reset canvas mocks

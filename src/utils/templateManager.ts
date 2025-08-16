@@ -17,15 +17,20 @@ export class TemplateManager {
     return TemplateManager.instance
   }
 
+  // For testing purposes - reset the singleton instance
+  static resetInstance(): void {
+    TemplateManager.instance = undefined as any
+  }
+
   // Save current canvas as a template
-  saveTemplate(
+  async saveTemplate(
     name: string,
     description: string,
     width: number,
     height: number,
     pixels: Map<string, PixelData>,
     tags: string[] = []
-  ): SavedTemplate {
+  ): Promise<SavedTemplate> {
     const id = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const now = Date.now()
     
@@ -41,10 +46,104 @@ export class TemplateManager {
       tags
     }
 
+    // Save to memory
     this.templates.set(id, template)
+    
+    // Save to localStorage as backup
     this.saveTemplates()
     
+    // Save to file system
+    try {
+      await this.saveTemplateToFile(template)
+      console.log(`Template saved to file: ${template.name}`)
+    } catch (error) {
+      console.error('Failed to save template to file:', error)
+      // Continue with localStorage backup
+    }
+    
     return template
+  }
+
+  // Save template as JSON file
+  private async saveTemplateToFile(template: SavedTemplate): Promise<void> {
+    const templateData = JSON.stringify(template, null, 2)
+    
+    try {
+      console.log('Attempting to save template to templates folder...')
+      console.log('Template data:', { filename: `${template.name.replace(/[^a-zA-Z0-9]/g, '_')}_${template.width}x${template.height}.json`, size: `${template.width}x${template.height}` })
+      
+      // For development: save directly to templates folder
+      const response = await fetch('/api/save-template', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: `${template.name.replace(/[^a-zA-Z0-9]/g, '_')}_${template.width}x${template.height}.json`,
+          content: templateData,
+          size: `${template.width}x${template.height}`
+        })
+      })
+      
+      console.log('API response status:', response.status)
+      const responseText = await response.text()
+      console.log('API response body:', responseText)
+      
+      if (response.ok) {
+        console.log(`Template saved to templates folder: ${template.name}`)
+      } else {
+        throw new Error(`Failed to save to templates folder: ${response.status} ${responseText}`)
+      }
+    } catch (error) {
+      console.error('Failed to save to templates folder, falling back to download:', error)
+      
+      // Fallback: download the file
+      const blob = new Blob([templateData], { type: 'application/json' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      
+      const filename = `${template.name.replace(/[^a-zA-Z0-9]/g, '_')}_${template.width}x${template.height}.json`
+      link.download = filename
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+    }
+  }
+
+  // Load template from JSON file
+  async loadTemplateFromFile(file: File): Promise<SavedTemplate | null> {
+    try {
+      const text = await file.text()
+      const template = JSON.parse(text) as SavedTemplate
+      
+      // Validate template structure
+      if (!template.name || !template.width || !template.height || !template.pixels) {
+        throw new Error('Invalid template format')
+      }
+
+      // Generate new ID to avoid conflicts
+      const id = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const now = Date.now()
+      
+      const importedTemplate: SavedTemplate = {
+        ...template,
+        id,
+        createdAt: now,
+        updatedAt: now
+      }
+
+      // Add to memory and localStorage
+      this.templates.set(id, importedTemplate)
+      this.saveTemplates()
+      
+      console.log('Template imported from file:', importedTemplate.name)
+      return importedTemplate
+    } catch (error) {
+      console.error('Failed to import template from file:', error)
+      return null
+    }
   }
 
   // Get all templates
@@ -58,7 +157,7 @@ export class TemplateManager {
   }
 
   // Update template
-  updateTemplate(id: string, updates: Partial<SavedTemplate>): boolean {
+  async updateTemplate(id: string, updates: Partial<SavedTemplate>): Promise<boolean> {
     const template = this.templates.get(id)
     if (!template) return false
 
@@ -70,6 +169,14 @@ export class TemplateManager {
 
     this.templates.set(id, updatedTemplate)
     this.saveTemplates()
+    
+    // Also save updated template to file
+    try {
+      await this.saveTemplateToFile(updatedTemplate)
+    } catch (error) {
+      console.error('Failed to save updated template to file:', error)
+    }
+    
     return true
   }
 
@@ -144,7 +251,7 @@ export class TemplateManager {
       const templatesArray = Array.from(this.templates.values())
       localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templatesArray))
     } catch (error) {
-      console.error('Failed to save templates:', error)
+      console.error('Failed to save templates to localStorage:', error)
     }
   }
 
@@ -159,7 +266,7 @@ export class TemplateManager {
         })
       }
     } catch (error) {
-      console.error('Failed to load templates:', error)
+      console.error('Failed to load templates from localStorage:', error)
     }
   }
 

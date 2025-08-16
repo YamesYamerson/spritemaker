@@ -1,0 +1,21 @@
+{
+  "id": "sample_cross_32x32",
+  "name": "Sample Cross 32x32",
+  "description": "A simple red cross pattern for 32x32 canvas",
+  "width": 32,
+  "height": 32,
+  "pixels": [
+    {"x": 14, "y": 16, "color": "#FF0000", "layerId": 1},
+    {"x": 15, "y": 16, "color": "#FF0000", "layerId": 1},
+    {"x": 16, "y": 16, "color": "#FF0000", "layerId": 1},
+    {"x": 17, "y": 16, "color": "#FF0000", "layerId": 1},
+    {"x": 18, "y": 16, "color": "#FF0000", "layerId": 1},
+    {"x": 16, "y": 14, "color": "#FF0000", "layerId": 1},
+    {"x": 16, "y": 15, "color": "#FF0000", "layerId": 1},
+    {"x": 16, "y": 17, "color": "#FF0000", "layerId": 1},
+    {"x": 16, "y": 18, "color": "#FF0000", "layerId": 1}
+  ],
+  "createdAt": 1703123456789,
+  "updatedAt": 1703123456789,
+  "tags": ["sample", "test", "cross", "32x32"]
+}
