@@ -29,7 +29,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
   })
 
   // Generate thumbnail from pixel data
-  const generateThumbnail = (pixels: Array<{ x: number; y: number; newColor: string }>, canvasSize: number): string => {
+  const generateThumbnail = (canvasSize: number, operation: any): string => {
     const thumbnailSize = 32 // 32x32 thumbnail
     const scale = thumbnailSize / canvasSize
     
@@ -57,17 +57,34 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
       }
     }
     
-    // Draw the pixels
-    pixels.forEach(({ x, y, newColor }) => {
-      if (newColor !== 'transparent') {
-        const scaledX = Math.floor(x * scale)
-        const scaledY = Math.floor(y * scale)
-        const pixelSize = Math.max(1, Math.floor(scale))
-        
-        ctx.fillStyle = newColor
-        ctx.fillRect(scaledX, scaledY, pixelSize, pixelSize)
-      }
-    })
+    // Use the canvas snapshot if available, otherwise fall back to operation pixels
+    if (operation?.canvasSnapshot && operation.canvasSnapshot instanceof Map) {
+      // Draw the complete canvas state from the snapshot
+      operation.canvasSnapshot.forEach((pixel: any) => {
+        if (pixel && pixel.color && pixel.color !== 'transparent' && 
+            typeof pixel.x === 'number' && typeof pixel.y === 'number') {
+          const scaledX = Math.floor(pixel.x * scale)
+          const scaledY = Math.floor(pixel.y * scale)
+          const pixelSize = Math.max(1, Math.floor(scale))
+          
+          ctx.fillStyle = pixel.color
+          ctx.fillRect(scaledX, scaledY, pixelSize, pixelSize)
+        }
+      })
+    } else if (operation?.pixels && Array.isArray(operation.pixels)) {
+      // Fallback: show just the operation pixels (for backward compatibility)
+      operation.pixels.forEach((pixel: any) => {
+        if (pixel && pixel.newColor && pixel.newColor !== 'transparent' &&
+            typeof pixel.x === 'number' && typeof pixel.y === 'number') {
+          const scaledX = Math.floor(pixel.x * scale)
+          const scaledY = Math.floor(pixel.y * scale)
+          const pixelSize = Math.max(1, Math.floor(scale))
+          
+          ctx.fillStyle = pixel.newColor
+          ctx.fillRect(scaledX, scaledY, pixelSize, pixelSize)
+        }
+      })
+    }
     
     return canvas.toDataURL('image/png')
   }
@@ -141,16 +158,24 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
       // Only show operations that are currently visible in the drawing area
       // These are the operations in the undo stack (applied to canvas)
       if (historyState.undoStack) {
-        historyState.undoStack.slice().reverse().forEach((op: StrokeOperation) => {
-          operations.push({
-            id: op.id,
-            tool: op.tool,
-            thumbnail: generateThumbnail(op.pixels, canvasSize),
-            timestamp: op.timestamp,
-            canUndo: true,
-            canRedo: false
+        // First validate that all operations are valid
+        const allOperationsValid = historyState.undoStack.every((op: StrokeOperation) => 
+          op && op.id && op.tool && op.pixels && Array.isArray(op.pixels)
+        )
+        
+        // Only show operations if all operations in the stack are valid
+        if (allOperationsValid) {
+          historyState.undoStack.slice().reverse().forEach((op: StrokeOperation) => {
+            operations.push({
+              id: op.id,
+              tool: op.tool,
+              thumbnail: generateThumbnail(canvasSize, op),
+              timestamp: op.timestamp,
+              canUndo: true,
+              canRedo: false
+            })
           })
-        })
+        }
       }
 
       // Don't show redo operations - they are not visible in the drawing area

@@ -1531,10 +1531,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         })
         
         if (pixelChanges.length > 0) {
+          // Capture the current canvas state after the operation
+          const canvasSnapshot = new Map(pixels)
+          
           const operation = historyManagerRef.current.createStrokeOperation(
-            drawingAction.tool,
+            currentDrawingAction.tool,
             activeLayer!.id,
-            pixelChanges
+            pixelChanges,
+            canvasSnapshot
           )
           historyManagerRef.current.pushOperation(operation)
           dispatchHistoryChange() // Dispatch history change event
@@ -1690,10 +1694,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
       
       if (pixelChanges.length > 0) {
+        // Capture the current canvas state after the operation
+        const canvasSnapshot = new Map(pixels)
+        
         const operation = historyManagerRef.current.createStrokeOperation(
           currentDrawingAction.tool,
           activeLayer!.id,
-          pixelChanges
+          pixelChanges,
+          canvasSnapshot
         )
         historyManagerRef.current.pushOperation(operation)
         dispatchHistoryChange() // Dispatch history change event
@@ -1844,10 +1852,14 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
       
       if (pixelChanges.length > 0) {
+        // Capture the current canvas state after the operation
+        const canvasSnapshot = new Map(pixels)
+        
         const operation = historyManagerRef.current.createStrokeOperation(
           'move-selection',
           activeLayer!.id,
-          pixelChanges
+          pixelChanges,
+          canvasSnapshot
         )
         historyManagerRef.current.pushOperation(operation)
         dispatchHistoryChange()

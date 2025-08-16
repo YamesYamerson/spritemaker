@@ -112,14 +112,16 @@ export class HistoryManager {
       y: number
       previousColor: Color
       newColor: Color
-    }>
+    }>,
+    canvasSnapshot?: Map<string, any>
   ): StrokeOperation {
     return {
       id: `${Date.now()}-${Math.random()}`,
       tool,
       layerId,
       pixels,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      canvasSnapshot
     }
   }
 

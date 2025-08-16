@@ -60,6 +60,7 @@ export interface StrokeOperation {
     newColor: Color
   }>
   timestamp: number
+  canvasSnapshot?: Map<string, PixelData> // Store the complete canvas state after this operation
   metadata?: {
     selectionBounds?: {
       startX: number
