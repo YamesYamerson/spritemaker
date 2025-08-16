@@ -60,16 +60,16 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
   const [hue, setHue] = useState(0)
   const [saturation, setSaturation] = useState(100)
   const [value, setValue] = useState(100)
-  const [alpha, setAlpha] = useState(1)
+
   const [currentColor, setCurrentColor] = useState(primaryColor)
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false)
-  const [dragType, setDragType] = useState<'gradient' | 'hue' | 'alpha' | null>(null)
+  const [dragType, setDragType] = useState<'gradient' | 'hue' | null>(null)
 
   const gradientRef = useRef<HTMLCanvasElement>(null)
   const hueRef = useRef<HTMLCanvasElement>(null)
-  const alphaRef = useRef<HTMLCanvasElement>(null)
+
 
   // Default color palette (similar to Aseprite) - memoized to prevent recreation
   const defaultColors: Color[] = useMemo(() => [
@@ -181,60 +181,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
     }
   }, []) // Empty dependency array - only run once
 
-  // Draw alpha bar - only when HSV changes
-  useEffect(() => {
-    const canvas = alphaRef.current
-    if (!canvas) return
-    
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    
-    const width = canvas.width
-    const height = canvas.height
-    
-    // Clear canvas first
-    ctx.clearRect(0, 0, width, height)
-    
-    // Draw checkerboard background pattern
-    const checkerSize = 8
-    for (let x = 0; x < width; x += checkerSize) {
-      for (let y = 0; y < height; y += checkerSize) {
-        const isEven = ((x / checkerSize) + (y / checkerSize)) % 2 === 0
-        ctx.fillStyle = isEven ? '#ccc' : '#fff'
-        ctx.fillRect(x, y, checkerSize, height - y < checkerSize ? height - y : checkerSize)
-      }
-    }
-    
-    try {
-      // Create alpha gradient from transparent to full color
-      const gradient = createSafeGradient(ctx, 0, 0, width, 0, [
-        { offset: 0, color: 'transparent' },
-        { offset: 1, color: hsvToRgb(hue, saturation, value) }
-      ])
-      
-      if (gradient) {
-        ctx.fillStyle = gradient
-        ctx.fillRect(0, 0, width, height)
-      } else {
-        // Fallback to solid color if gradient creation fails
-        const color = hsvToRgb(hue, saturation, value)
-        ctx.fillStyle = color
-        ctx.fillRect(0, 0, width, height)
-      }
-    } catch (error) {
-      console.warn('Failed to create alpha gradient:', error)
-      // Fallback to solid color
-      try {
-        const color = hsvToRgb(hue, saturation, value)
-        ctx.fillStyle = color
-        ctx.fillRect(0, 0, width, height)
-      } catch (fallbackError) {
-        // Final fallback
-        ctx.fillStyle = '#000000'
-        ctx.fillRect(0, 0, width, height)
-      }
-    }
-  }, [hue, saturation, value, alpha])
+
 
   // Handle canvas clicks
   const handleGradientClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -280,37 +227,19 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
     }
   }, [saturation, value, handleColorChange])
 
-  const handleAlphaClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = e.currentTarget
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    
-    // Calculate alpha value (0-1) from x position
-    const newAlpha = Math.max(0, Math.min(1, x / rect.width))
-    
-    setAlpha(newAlpha)
-    
-    try {
-      const newColor = hsvToRgb(hue, saturation, value)
-      handleColorChange(newColor)
-    } catch (error) {
-      console.warn('Failed to convert HSV to RGB in alpha click:', error)
-    }
-  }, [hue, saturation, value, handleColorChange])
+
 
   // Handle initial clicks when mouse down occurs
-  const handleInitialClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>, type: 'gradient' | 'hue' | 'alpha') => {
+  const handleInitialClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>, type: 'gradient' | 'hue') => {
     if (type === 'gradient') {
       handleGradientClick(e)
-    } else if (type === 'alpha') {
-      handleAlphaClick(e)
     } else if (type === 'hue') {
       handleHueClick(e)
     }
-  }, [handleGradientClick, handleHueClick, handleAlphaClick])
+  }, [handleGradientClick, handleHueClick])
 
   // Mouse event handlers for drag functionality
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>, type: 'gradient' | 'hue' | 'alpha') => {
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>, type: 'gradient' | 'hue') => {
     setIsDragging(true)
     setDragType(type)
     e.preventDefault()
@@ -326,10 +255,8 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
       handleGradientClick(e)
     } else if (dragType === 'hue') {
       handleHueClick(e)
-    } else if (dragType === 'alpha') {
-      handleAlphaClick(e)
     }
-  }, [isDragging, dragType, handleGradientClick, handleHueClick, handleAlphaClick])
+  }, [isDragging, dragType, handleGradientClick, handleHueClick])
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
@@ -523,83 +450,23 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         />
       </div>
 
-      {/* Alpha bar */}
-      <div style={{ marginBottom: '15px' }}>
-        {/* Alpha bar container with relative positioning for the marker */}
-        <div style={{ position: 'relative', marginBottom: '8px' }}>
-          <canvas
-            ref={alphaRef}
-            width={160}
-            height={15}
-            onMouseDown={(e) => handleMouseDown(e, 'alpha')}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            style={{
-              width: '100%',
-              height: 'auto',
-              border: '1px solid #555',
-              borderRadius: '4px',
-              cursor: isDragging && dragType === 'alpha' ? 'grabbing' : 'crosshair'
-            }}
-          />
-          {/* Current alpha marker - positioned relative to the canvas container */}
-          <div
-            style={{
-              position: 'absolute',
-              left: `${(alpha * 100)}%`,
-              top: '-1px',
-              width: '8px',
-              height: '23px',
-              border: '2px solid #fff',
-              borderRadius: '2px',
-              backgroundColor: 'transparent',
-              transform: 'translateX(-50%)',
-              pointerEvents: 'none',
-              boxShadow: '0 0 4px rgba(0,0,0,0.8)',
-              boxSizing: 'border-box'
-            }}
-          />
-        </div>
-        
 
-        
-        {/* Alpha percentage display */}
-        <div style={{
-          fontSize: '10px',
-          color: '#aaa',
-          textAlign: 'center'
-        }}>
-          Alpha: {Math.round(alpha * 100)}%
-        </div>
-      </div>
 
       {/* Color inputs */}
       <div style={{ marginBottom: '15px' }}>
-        <div style={{ marginBottom: '8px' }}>
-          <label>Hex:</label>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px',
+          marginBottom: '8px' 
+        }}>
+          <label style={{ whiteSpace: 'nowrap' }}>Hex:</label>
           <input
             type="text"
             value={primaryColor}
             onChange={handleHexChange}
             style={{
-              width: '100%',
-              padding: '4px',
-              backgroundColor: '#444',
-              border: '1px solid #555',
-              borderRadius: '4px',
-              color: '#fff',
-              fontSize: '11px'
-            }}
-          />
-        </div>
-        <div style={{ marginBottom: '8px' }}>
-          <label>HSLA:</label>
-          <input
-            type="text"
-            value={`hsla(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(value)}%, ${alpha.toFixed(2)})`}
-            readOnly
-            style={{
-              width: '100%',
+              flex: 1,
               padding: '4px',
               backgroundColor: '#444',
               border: '1px solid #555',
@@ -614,7 +481,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
       {/* Color swatches */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
+        gridTemplateColumns: 'repeat(10, 22px)',
         gap: '0px',
         marginTop: '15px'
       }}>
@@ -623,8 +490,8 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             key={index}
             onClick={() => handleColorChange(color)}
             style={{
-              width: '100%',
-              height: '20px',
+              width: '22px',
+              height: '22px',
               backgroundColor: color,
               border: '1px solid #555',
               borderRadius: '0px',
