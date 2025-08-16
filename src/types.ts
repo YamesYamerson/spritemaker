@@ -1,4 +1,4 @@
-export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select' | 'lasso' | 'copy' | 'cut' | 'paste' | 'move-selection' | 'brush-size'
+export type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'rectangle-border' | 'rectangle-filled' | 'circle-border' | 'circle-filled' | 'line' | 'select' | 'lasso' | 'copy' | 'cut' | 'paste' | 'move-selection' | 'brush-size' | 'template'
 
 export type Color = string
 
@@ -14,6 +14,21 @@ export interface PixelData {
   y: number
   color: Color
   layerId: number
+}
+
+// Template system types
+export interface Template {
+  id: string
+  name: string
+  description: string
+  sizes: TemplateSize[]
+}
+
+export interface TemplateSize {
+  width: number
+  height: number
+  svgPath: string
+  previewPath: string
 }
 
 // New types for undo/redo system
@@ -94,5 +109,7 @@ declare global {
     canUndo?: () => boolean
     canRedo?: () => boolean
     getHistoryState?: () => HistoryState
+    addToHistory?: (operation: StrokeOperation) => void
+    applyTemplate?: (templatePixels: Map<string, PixelData>) => void
   }
 }

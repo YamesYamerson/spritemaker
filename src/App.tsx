@@ -5,6 +5,7 @@ import LayerPanel from './components/LayerPanel'
 import ColorPicker from './components/ColorPicker'
 import CustomColorTemplatePicker from './components/CustomColorTemplatePicker'
 import HistoryPanel from './components/HistoryPanel'
+import TemplatePanel from './components/TemplatePanel'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Tool, Color, Layer, GridSettings } from './types'
 
@@ -81,6 +82,13 @@ function App() {
   const handleSettings = () => {
     // TODO: Implement settings functionality
     console.log('Settings clicked')
+  }
+
+  // Template handler
+  const handleTemplateSelect = (template: any, size: any) => {
+    // For now, just log the template selection
+    // TODO: Implement template application to canvas
+    console.log('Template selected:', template.name, 'Size:', size.width + 'x' + size.height)
   }
 
   return (
@@ -238,6 +246,20 @@ function App() {
           <HistoryPanel
             canvasRef={canvasRef}
           />
+        </div>
+
+        {/* Template Panel - Below History Panel */}
+        <div style={{ 
+          width: '100%',
+          flexShrink: 0
+        }}>
+          <ErrorBoundary>
+            <TemplatePanel
+              onTemplateSelect={handleTemplateSelect}
+              currentCanvasSize={canvasSize}
+              canvasRef={canvasRef || undefined}
+            />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

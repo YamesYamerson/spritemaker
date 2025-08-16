@@ -26,12 +26,12 @@ describe('CustomColorTemplatePicker', () => {
 
   it('should render without crashing', () => {
     render(<CustomColorTemplatePicker {...defaultProps} />)
-    expect(screen.getByText('Custom Color Templates')).toBeInTheDocument()
+    expect(screen.getByText('Color Templates')).toBeInTheDocument()
   })
 
   it('should display the default template', () => {
     render(<CustomColorTemplatePicker {...defaultProps} />)
-    expect(screen.getByText('Default')).toBeInTheDocument()
+    expect(screen.getByText('Default (Pastel)')).toBeInTheDocument()
   })
 
   it('should show create button', () => {
@@ -94,7 +94,7 @@ describe('CustomColorTemplatePicker', () => {
     
     // Click on a color from the default template
     // Look for the actual color swatches in the default template
-    const defaultTemplate = screen.getByText('Default').closest('div')
+    const defaultTemplate = screen.getByText('Default (Pastel)').closest('div')
     const colorSwatches = defaultTemplate?.querySelectorAll('[style*="background-color"]')
     
     if (colorSwatches && colorSwatches.length > 0) {

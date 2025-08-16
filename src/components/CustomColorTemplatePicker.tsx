@@ -88,7 +88,6 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
         flexShrink: 0,
         backgroundColor: '#2a2a2a',
         border: '1px solid #555',
-        borderBottom: '1px solid #555',
         borderTopLeftRadius: '4px',
         borderTopRightRadius: '4px'
       }}>

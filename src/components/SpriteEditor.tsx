@@ -91,12 +91,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   // Memoize brush pattern to avoid regeneration
   const currentBrushPattern = useMemo(() => generateBrushPattern(brushSize), [brushSize])
 
-  // Expose canvas ref to parent
-  useEffect(() => {
-    if (onCanvasRef) {
-      onCanvasRef(canvasRef)
-    }
-  }, [onCanvasRef])
+
 
   // Notify parent of pixel changes
   useEffect(() => {
@@ -868,6 +863,44 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       return
     }
     
+    // Handle template operations
+    if (operation.tool === 'template') {
+      if (reverse) {
+        // Undo: restore previous pixels
+        const newPixels = new Map(pixels)
+        operation.pixels.forEach(({ x, y, previousColor }) => {
+          if (previousColor === 'transparent') {
+            newPixels.delete(`${x},${y}`)
+          } else {
+            newPixels.set(`${x},${y}`, {
+              x,
+              y,
+              color: previousColor,
+              layerId: operation.layerId
+            })
+          }
+        })
+        setPixels(newPixels)
+      } else {
+        // Redo: apply template pixels
+        const newPixels = new Map(pixels)
+        operation.pixels.forEach(({ x, y, newColor }) => {
+          if (newColor === 'transparent') {
+            newPixels.delete(`${x},${y}`)
+          } else {
+            newPixels.set(`${x},${y}`, {
+              x,
+              y,
+              color: newColor,
+              layerId: operation.layerId
+            })
+          }
+        })
+        setPixels(newPixels)
+      }
+      return
+    }
+    
     // Handle pixel-based operations
     const newPixels = new Map(pixels)
     
@@ -909,6 +942,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     document.dispatchEvent(new CustomEvent('historyChange'))
   }, [])
 
+
+
   // Undo function
   const undo = useCallback(() => {
     const operation = historyManagerRef.current.undo()
@@ -931,6 +966,69 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   // Check if undo/redo are available
   const canUndo = useCallback(() => historyManagerRef.current.canUndo(), [])
   const canRedo = useCallback(() => historyManagerRef.current.canRedo(), [])
+
+  // Template application method
+  const applyTemplate = useCallback((templatePixels: Map<string, PixelData>) => {
+    // Store the current state for history
+    const previousPixels = new Map(pixels)
+    
+    // Create a proper history entry for the template application
+    // We need to record both what was there before AND what the template puts there
+    const templateOperation = {
+      id: `template-${Date.now()}`,
+      tool: 'template' as Tool,
+      layerId: activeLayer?.id || 1,
+      pixels: [] as Array<{ x: number; y: number; previousColor: Color; newColor: Color }>,
+      timestamp: Date.now(),
+      metadata: {}
+    }
+    
+    // Record all pixel changes: what was there before vs what the template puts there
+    const allPixelChanges = new Set<string>()
+    
+    // Add all previous pixel positions
+    previousPixels.forEach((pixel) => {
+      allPixelChanges.add(`${pixel.x},${pixel.y}`)
+    })
+    
+    // Add all template pixel positions
+    templatePixels.forEach((pixel) => {
+      allPixelChanges.add(`${pixel.x},${pixel.y}`)
+    })
+    
+    // Create the pixel change records
+    allPixelChanges.forEach(key => {
+      const [x, y] = key.split(',').map(Number)
+      const previousPixel = previousPixels.get(key)
+      const templatePixel = templatePixels.get(key)
+      
+      const previousColor = previousPixel ? previousPixel.color : 'transparent'
+      const newColor = templatePixel ? templatePixel.color : 'transparent'
+      
+      if (previousColor !== newColor) {
+        templateOperation.pixels.push({
+          x,
+          y,
+          previousColor,
+          newColor
+        })
+      }
+    })
+    
+    // Update internal pixels
+    setPixels(templatePixels)
+    
+    // Add to history
+    historyManagerRef.current.pushOperation(templateOperation)
+    
+    // Notify parent of the change
+    if (onPixelsChange) {
+      onPixelsChange(templatePixels)
+    }
+    
+    // Dispatch history change event
+    dispatchHistoryChange()
+  }, [pixels, activeLayer, onPixelsChange, dispatchHistoryChange])
 
   // Flood fill algorithm with history tracking
   const floodFill = useCallback((startX: number, startY: number, targetColor: Color, replacementColor: Color) => {
@@ -1713,19 +1811,6 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [undo, redo])
 
-  // Expose undo/redo functions to parent component
-  useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current as any
-      canvas.undo = undo
-      canvas.redo = redo
-      canvas.canUndo = canUndo
-      canvas.canRedo = canRedo
-      canvas.getHistoryState = () => historyManagerRef.current.getState()
-      canvas.getCanvasSize = () => canvasSize
-    }
-  }, [undo, redo, canUndo, canRedo, canvasSize])
-
   // Render canvas
   useEffect(() => {
     const canvas = canvasRef.current
@@ -2130,6 +2215,23 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       ctx.globalAlpha = 1.0
     }
   }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool, lassoPath, animationTime, isMovingSelection, moveOffset])
+
+  // Expose canvas methods to parent
+  useEffect(() => {
+    if (onCanvasRef) {
+      // Add our custom methods to the canvas ref
+      const canvas = canvasRef.current
+      if (canvas) {
+        ;(canvas as any).undo = undo
+        ;(canvas as any).redo = redo
+        ;(canvas as any).canUndo = canUndo
+        ;(canvas as any).canRedo = canRedo
+        ;(canvas as any).getHistoryState = () => historyManagerRef.current.getState()
+        ;(canvas as any).applyTemplate = applyTemplate
+      }
+      onCanvasRef(canvasRef)
+    }
+  }, [onCanvasRef, undo, redo, canUndo, canRedo, applyTemplate])
 
   return (
     <div className="canvas-container">

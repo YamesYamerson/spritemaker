@@ -3,7 +3,6 @@ import { Color } from '../types'
 import { 
   hsvToRgb, 
   rgbToHsv, 
-  createSafeGradient, 
   safeFillRect, 
   isValidHexColor 
 } from '../utils/colorUtils'
