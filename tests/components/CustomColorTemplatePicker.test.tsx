@@ -51,31 +51,30 @@ describe('CustomColorTemplatePicker', () => {
     expect(screen.getByText('Create')).toBeInTheDocument()
   })
 
-  it('should show 10 color slots in creation form', () => {
+  it('should show simple creation form', () => {
     render(<CustomColorTemplatePicker {...defaultProps} />)
     const createButton = screen.getByTitle('Create New Template')
     fireEvent.click(createButton)
     
-    // Should show 10 color slots (empty slots will have #333 background)
-    const colorSlots = document.querySelectorAll('[style*="background-color: rgb(51, 51, 51)"]')
-    expect(colorSlots.length).toBe(10)
+    // Should show just a name input and buttons
+    expect(screen.getByPlaceholderText('Template name...')).toBeInTheDocument()
+    expect(screen.getByText('Cancel')).toBeInTheDocument()
+    expect(screen.getByText('Create')).toBeInTheDocument()
   })
 
-  it('should allow adding colors from default template', () => {
+  it('should allow creating template with default colors', () => {
     render(<CustomColorTemplatePicker {...defaultProps} />)
+    
+    // Open creation form
     const createButton = screen.getByTitle('Create New Template')
     fireEvent.click(createButton)
     
-    // Click on a color from the default template to add it
-    const defaultColors = screen.getAllByText('Click colors to add to new template:')[0]
-    const parentDiv = defaultColors.closest('div')
-    const colorSwatches = parentDiv?.querySelectorAll('[style*="background-color"]')
+    // Fill in template name
+    const nameInput = screen.getByPlaceholderText('Template name...')
+    fireEvent.change(nameInput, { target: { value: 'My Template' } })
     
-    if (colorSwatches && colorSwatches.length > 0) {
-      fireEvent.click(colorSwatches[0])
-      // The Create button should still be disabled since we need 10 colors
-      expect(screen.getByText('Create')).toBeDisabled()
-    }
+    // Create button should be enabled
+    expect(screen.getByText('Create')).not.toBeDisabled()
   })
 
   it('should close creation form when Cancel is clicked', () => {
@@ -131,26 +130,14 @@ describe('CustomColorTemplatePicker', () => {
     const nameInput = screen.getByPlaceholderText('Template name...')
     fireEvent.change(nameInput, { target: { value: 'My Template' } })
     
-    // Add 10 colors (simulate by clicking on default template colors)
-    const defaultColors = screen.getAllByText('Click colors to add to new template:')[0]
-    const parentDiv = defaultColors.closest('div')
-    const colorSwatches = parentDiv?.querySelectorAll('[style*="background-color"]')
+    // Create button should be enabled
+    const createBtn = screen.getByText('Create')
+    expect(createBtn).not.toBeDisabled()
     
-    if (colorSwatches && colorSwatches.length >= 10) {
-      // Click on 10 colors to add them
-      for (let i = 0; i < 10; i++) {
-        fireEvent.click(colorSwatches[i])
-      }
-      
-      // Now the Create button should be enabled
-      const createButton = screen.getByText('Create')
-      expect(createButton).not.toBeDisabled()
-      
-      // Click create
-      fireEvent.click(createButton)
-      
-      // Should have called setItem to save to localStorage
-      expect(localStorageMock.setItem).toHaveBeenCalled()
-    }
+    // Click create
+    fireEvent.click(createBtn)
+    
+    // Should have called setItem to save to localStorage
+    expect(localStorageMock.setItem).toHaveBeenCalled()
   })
 })

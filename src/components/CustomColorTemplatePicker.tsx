@@ -17,15 +17,14 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
   const [templates, setTemplates] = useState<CustomColorTemplate[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
-  const [newTemplateColors, setNewTemplateColors] = useState<Color[]>([])
 
-  // Default template with 10 colors
+  // Default template with 10 pastel colors (because pastels are fun!)
   const defaultTemplate: CustomColorTemplate = {
     id: 'default',
-    name: 'Default',
+    name: 'Default (Pastel)',
     colors: [
-      '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff',
-      '#ffff00', '#ff00ff', '#00ffff', '#ff8000', '#8000ff'
+      '#ffb3ba', '#baffc9', '#bae1ff', '#ffffba', '#ffb3f0',
+      '#f0b3ff', '#b3f0ff', '#ffd4b3', '#d4b3ff', '#b3ffd4'
     ]
   }
 
@@ -48,17 +47,16 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
   }, [templates])
 
   const handleCreateTemplate = () => {
-    if (newTemplateName.trim() && newTemplateColors.length === 10) {
+    if (newTemplateName.trim()) {
       const newTemplate: CustomColorTemplate = {
         id: Date.now().toString(),
         name: newTemplateName.trim(),
-        colors: [...newTemplateColors]
+        colors: [...defaultTemplate.colors] // Copy default colors
       }
       
       setTemplates(prev => [...prev, newTemplate])
       setIsCreating(false)
       setNewTemplateName('')
-      setNewTemplateColors([])
     }
   }
 
@@ -66,15 +64,7 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
     setTemplates(prev => prev.filter(t => t.id !== templateId))
   }
 
-  const handleAddColorToNewTemplate = (color: Color) => {
-    if (newTemplateColors.length < 10) {
-      setNewTemplateColors(prev => [...prev, color])
-    }
-  }
 
-  const handleRemoveColorFromNewTemplate = (index: number) => {
-    setNewTemplateColors(prev => prev.filter((_, i) => i !== index))
-  }
 
   const handleColorClick = (color: Color) => {
     onColorSelect(color)
@@ -103,9 +93,9 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
         borderTopLeftRadius: '4px',
         borderTopRightRadius: '4px'
       }}>
-        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
-          Custom Color Templates
-        </span>
+                  <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            Color Templates
+          </span>
         <button
           onClick={() => setIsCreating(true)}
           style={{
@@ -169,61 +159,14 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
               </div>
               
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(10, 22px)',
-                gap: '0px',
-                marginBottom: '8px'
-              }}>
-                {Array.from({ length: 10 }, (_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: '22px',
-                      height: '22px',
-                      backgroundColor: newTemplateColors[i] || '#333',
-                      border: '1px solid #555',
-                      borderRadius: '0px',
-                      cursor: 'pointer',
-                      position: 'relative'
-                    }}
-                    onClick={() => {
-                      if (newTemplateColors[i]) {
-                        handleRemoveColorFromNewTemplate(i)
-                      }
-                    }}
-                  >
-                    {newTemplateColors[i] && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '2px',
-                        right: '2px',
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: '#ff0000',
-                        borderRadius: '50%',
-                        fontSize: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff'
-                      }}>
-                        ×
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{
                 display: 'flex',
                 gap: '8px',
-                justifyContent: 'space-between'
+                justifyContent: 'flex-end'
               }}>
                 <button
                   onClick={() => {
                     setIsCreating(false)
                     setNewTemplateName('')
-                    setNewTemplateColors([])
                   }}
                   style={{
                     padding: '4px 8px',
@@ -239,14 +182,14 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
                 </button>
                 <button
                   onClick={handleCreateTemplate}
-                  disabled={newTemplateName.trim().length === 0 || newTemplateColors.length !== 10}
+                  disabled={newTemplateName.trim().length === 0}
                   style={{
                     padding: '4px 8px',
-                    backgroundColor: newTemplateName.trim().length > 0 && newTemplateColors.length === 10 ? '#4a4a4a' : '#2a2a2a',
+                    backgroundColor: newTemplateName.trim().length > 0 ? '#4a4a4a' : '#2a2a2a',
                     border: '1px solid #555',
                     borderRadius: '3px',
-                    color: newTemplateName.trim().length > 0 && newTemplateColors.length === 10 ? '#fff' : '#666',
-                    cursor: newTemplateName.trim().length > 0 && newTemplateColors.length === 10 ? 'pointer' : 'not-allowed',
+                    color: newTemplateName.trim().length > 0 ? '#fff' : '#666',
+                    cursor: newTemplateName.trim().length > 0 ? 'pointer' : 'not-allowed',
                     fontSize: '11px'
                   }}
                 >
@@ -320,46 +263,7 @@ const CustomColorTemplatePicker: React.FC<CustomColorTemplatePickerProps> = ({
                 ))}
               </div>
 
-              {/* Add Colors Button (only show when creating) */}
-              {isCreating && template.id === 'default' && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '8px',
-                  backgroundColor: '#444',
-                  border: '1px solid #555',
-                  borderRadius: '4px'
-                }}>
-                  <div style={{
-                    color: '#aaa',
-                    fontSize: '10px',
-                    marginBottom: '4px'
-                  }}>
-                    Click colors to add to new template:
-                  </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(10, 22px)',
-                    gap: '0px'
-                  }}>
-                    {template.colors.map((color, index) => (
-                      <div
-                        key={index}
-                        onClick={() => handleAddColorToNewTemplate(color)}
-                        style={{
-                          width: '22px',
-                          height: '22px',
-                          backgroundColor: color,
-                          border: '1px solid #555',
-                          borderRadius: '0px',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          opacity: newTemplateColors.includes(color) ? 0.5 : 1
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+
             </div>
           ))}
         </div>
