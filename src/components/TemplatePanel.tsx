@@ -149,84 +149,31 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
            template.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   })
 
-  if (isCollapsed) {
-    return (
-      <div style={{
-        width: '100%',
-        backgroundColor: '#2a2a2a',
-        border: '1px solid #555',
-        borderRadius: '4px',
-        padding: '8px 12px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexShrink: 0
-      }}>
-        <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
-          Templates ({templates.length})
-        </span>
-        <button
-          onClick={() => setIsCollapsed(false)}
-          style={{
-            padding: '4px 8px',
-            backgroundColor: '#4a4a4a',
-            border: '1px solid #555',
-            borderRadius: '3px',
-            color: '#fff',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            minWidth: '24px',
-            height: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          title="Expand"
-        >
-          <svg
-            fill="currentColor"
-            height="12"
-            width="12"
-            viewBox="0 0 12 12"
-            style={{ transform: 'rotate(180deg)', transition: 'transform 0.2s ease' }}
-          >
-            <path
-              d="M2 4l4 4 4-4"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <>
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* Template Panel Card */}
       <div style={{
-        width: '100%',
         backgroundColor: '#2a2a2a',
         border: '1px solid #555',
         borderRadius: '4px',
+        flex: 1,
+        minHeight: 0,
         display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0
+        flexDirection: 'column'
       }}>
         {/* Header */}
         <div style={{
           padding: '8px 12px',
+          borderBottom: '1px solid #555',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          flexShrink: 0,
-          backgroundColor: '#2a2a2a',
-          border: '1px solid #555',
-          borderTopLeftRadius: '4px',
-          borderTopRightRadius: '4px'
+          flexShrink: 0
         }}>
           <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
             Templates ({templates.length})
@@ -251,7 +198,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               {isSaving ? 'Saving...' : 'Save'}
             </button>
             <button
-              onClick={() => setIsCollapsed(true)}
+              onClick={() => setIsCollapsed(!isCollapsed)}
               style={{
                 padding: '4px 8px',
                 backgroundColor: '#4a4a4a',
@@ -267,14 +214,17 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
-              title="Collapse"
+              title={isCollapsed ? 'Expand' : 'Collapse'}
             >
               <svg
                 fill="currentColor"
                 height="12"
                 width="12"
                 viewBox="0 0 12 12"
-                style={{ transform: 'none', transition: 'transform 0.2s ease' }}
+                style={{
+                  transform: isCollapsed ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s ease'
+                }}
               >
                 <path
                   d="M2 4l4 4 4-4"
@@ -289,164 +239,169 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
           </div>
         </div>
 
-        {/* Search */}
-        <div style={{
-          padding: '8px 12px',
-          backgroundColor: '#2a2a2a',
-          borderBottom: '1px solid #555'
-        }}>
-          <input
-            type="text"
-            placeholder="Search templates..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '6px 10px',
-              backgroundColor: '#3a3a3a',
-              border: '1px solid #555',
-              borderRadius: '3px',
-              color: '#fff',
-              fontSize: '12px'
-            }}
-          />
-        </div>
-
-        {/* Template List */}
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          padding: '12px',
-          overflowY: 'auto',
-          backgroundColor: '#2a2a2a',
-          borderBottomLeftRadius: '4px',
-          borderBottomRightRadius: '4px'
-        }}>
-          {/* Current Canvas Size Info */}
-          <div style={{
-            backgroundColor: '#3a3a3a',
-            border: '1px solid #555',
-            borderRadius: '4px',
-            padding: '8px 12px',
-            marginBottom: '12px',
-            textAlign: 'center'
-          }}>
-            <span style={{
-              color: '#4a7cff',
-              fontSize: '12px',
-              fontWeight: '500'
-            }}>
-              Current Canvas: {currentCanvasSize}x{currentCanvasSize}
-            </span>
-          </div>
-
-          {filteredTemplates.length === 0 ? (
+        {/* Template Content - Only show when not collapsed */}
+        {!isCollapsed && (
+          <>
+            {/* Search */}
             <div style={{
-              color: '#aaa',
-              fontSize: '12px',
-              textAlign: 'center',
-              padding: '20px'
+              padding: '8px 12px',
+              backgroundColor: '#2a2a2a',
+              borderBottom: '1px solid #555',
+              flexShrink: 0
             }}>
-              {searchQuery ? 'No templates found' : `No templates for ${currentCanvasSize}x${currentCanvasSize} canvas. Create one by drawing and saving!`}
-            </div>
-          ) : (
-            filteredTemplates.map(template => (
-              <div
-                key={template.id}
+              <input
+                type="text"
+                placeholder="Search templates..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
+                  width: '100%',
+                  padding: '6px 10px',
                   backgroundColor: '#3a3a3a',
                   border: '1px solid #555',
-                  borderRadius: '4px',
-                  padding: '12px',
-                  marginBottom: '8px',
-                  cursor: 'pointer'
+                  borderRadius: '3px',
+                  color: '#fff',
+                  fontSize: '12px'
                 }}
-                onClick={() => handleTemplateSelect(template)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#4a4a4a'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3a3a3a'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '8px'
+              />
+            </div>
+
+            {/* Template List - Scrollable content area */}
+            <div style={{
+              flex: '1 1 auto',
+              minHeight: 0,
+              padding: '12px',
+              overflowY: 'auto'
+            }}>
+              {/* Current Canvas Size Info */}
+              <div style={{
+                backgroundColor: '#3a3a3a',
+                border: '1px solid #555',
+                borderRadius: '4px',
+                padding: '8px 12px',
+                marginBottom: '12px',
+                textAlign: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{
+                  color: '#4a7cff',
+                  fontSize: '12px',
+                  fontWeight: '500'
                 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      color: '#fff',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      marginBottom: '4px'
-                    }}>
-                      {template.name}
-                    </div>
-                    {template.description && (
-                      <div style={{
-                        color: '#aaa',
-                        fontSize: '12px',
-                        marginBottom: '4px'
-                      }}>
-                        {template.description}
-                      </div>
-                    )}
-                    <div style={{
-                      color: '#888',
-                      fontSize: '11px'
-                    }}>
-                      {template.width}x{template.height} • {template.pixels.length} pixels
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteTemplate(template.id)
-                    }}
-                    style={{
-                      padding: '2px 6px',
-                      backgroundColor: '#d32f2f',
-                      border: '1px solid #d32f2f',
-                      borderRadius: '3px',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '10px'
-                    }}
-                    title="Delete Template"
-                  >
-                    ×
-                  </button>
+                  Current Canvas: {currentCanvasSize}x{currentCanvasSize}
+                </span>
+              </div>
+
+              {filteredTemplates.length === 0 ? (
+                <div style={{
+                  color: '#aaa',
+                  fontSize: '12px',
+                  textAlign: 'center',
+                  padding: '20px'
+                }}>
+                  {searchQuery ? 'No templates found' : `No templates for ${currentCanvasSize}x${currentCanvasSize} canvas. Create one by drawing and saving!`}
                 </div>
-                
-                {template.tags && template.tags.length > 0 && (
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '4px',
-                    marginTop: '8px'
-                  }}>
-                    {template.tags.map(tag => (
-                      <span
-                        key={tag}
-                        style={{
-                          backgroundColor: '#555',
+              ) : (
+                filteredTemplates.map(template => (
+                  <div
+                    key={template.id}
+                    style={{
+                      backgroundColor: '#3a3a3a',
+                      border: '1px solid #555',
+                      borderRadius: '4px',
+                      padding: '12px',
+                      marginBottom: '8px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                    onClick={() => handleTemplateSelect(template)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#4a4a4a'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3a3a3a'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
                           color: '#fff',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          marginBottom: '4px'
+                        }}>
+                          {template.name}
+                        </div>
+                        {template.description && (
+                          <div style={{
+                            color: '#aaa',
+                            fontSize: '12px',
+                            marginBottom: '4px'
+                          }}>
+                            {template.description}
+                          </div>
+                        )}
+                        <div style={{
+                          color: '#888',
+                          fontSize: '11px'
+                        }}>
+                          {template.width}x{template.height} • {template.pixels.length} pixels
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteTemplate(template.id)
+                        }}
+                        style={{
                           padding: '2px 6px',
-                          borderRadius: '10px',
+                          backgroundColor: '#d32f2f',
+                          border: '1px solid #d32f2f',
+                          borderRadius: '3px',
+                          color: '#fff',
+                          cursor: 'pointer',
                           fontSize: '10px'
                         }}
+                        title="Delete Template"
                       >
-                        {tag}
-                      </span>
-                    ))}
+                        ×
+                      </button>
+                    </div>
+                    
+                    {template.tags && template.tags.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '4px',
+                        marginTop: '8px'
+                      }}>
+                        {template.tags.map(tag => (
+                          <span
+                            key={tag}
+                            style={{
+                              backgroundColor: '#555',
+                              color: '#fff',
+                              padding: '2px 6px',
+                              borderRadius: '10px',
+                              fontSize: '10px'
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Save Template Modal */}
@@ -469,7 +424,7 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
         cancelText="Cancel"
         disabled={isLoading}
       />
-    </>
+    </div>
   )
 }
 

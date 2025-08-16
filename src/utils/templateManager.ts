@@ -55,7 +55,6 @@ export class TemplateManager {
     // Save to file system
     try {
       await this.saveTemplateToFile(template)
-      console.log(`Template saved to file: ${template.name}`)
     } catch (error) {
       console.error('Failed to save template to file:', error)
       // Continue with localStorage backup
@@ -69,9 +68,6 @@ export class TemplateManager {
     const templateData = JSON.stringify(template, null, 2)
     
     try {
-      console.log('Attempting to save template to templates folder...')
-      console.log('Template data:', { filename: `${template.name.replace(/[^a-zA-Z0-9]/g, '_')}_${template.width}x${template.height}.json`, size: `${template.width}x${template.height}` })
-      
       // For development: save directly to templates folder
       const response = await fetch('/api/save-template', {
         method: 'POST',
@@ -85,12 +81,10 @@ export class TemplateManager {
         })
       })
       
-      console.log('API response status:', response.status)
       const responseText = await response.text()
-      console.log('API response body:', responseText)
       
       if (response.ok) {
-        console.log(`Template saved to templates folder: ${template.name}`)
+        // Template saved successfully
       } else {
         throw new Error(`Failed to save to templates folder: ${response.status} ${responseText}`)
       }
@@ -138,7 +132,6 @@ export class TemplateManager {
       this.templates.set(id, importedTemplate)
       this.saveTemplates()
       
-      console.log('Template imported from file:', importedTemplate.name)
       return importedTemplate
     } catch (error) {
       console.error('Failed to import template from file:', error)

@@ -34,9 +34,6 @@ export async function loadTemplate(svgPath: string): Promise<ParsedTemplate> {
  * @returns Parsed template with pixel data
  */
 function parseSVGTemplate(svgContent: string): ParsedTemplate {
-  console.log('Parsing SVG template with regex approach')
-  console.log('SVG content length:', svgContent.length)
-  
   // Extract width and height using regex
   const widthMatch = svgContent.match(/width="(\d+)"/)
   const heightMatch = svgContent.match(/height="(\d+)"/)
@@ -47,8 +44,6 @@ function parseSVGTemplate(svgContent: string): ParsedTemplate {
   
   const width = parseInt(widthMatch[1])
   const height = parseInt(heightMatch[1])
-  
-  console.log(`SVG dimensions: ${width}x${height}`)
   
   // Extract all rect elements using regex
   const rectRegex = /<rect\s+([^>]+)\s*\/?>/g
@@ -72,8 +67,6 @@ function parseSVGTemplate(svgContent: string): ParsedTemplate {
       const fill = fillMatch[1]
       const opacity = opacityMatch ? parseFloat(opacityMatch[1]) : 1
       
-      console.log(`Rect ${rectCount}: x=${x}, y=${y}, fill=${fill}, opacity=${opacity}`)
-      
       // Include pixels with any opacity > 0 (including 0.8)
       if (opacity > 0 && fill !== 'none') {
         pixels.push({
@@ -81,16 +74,9 @@ function parseSVGTemplate(svgContent: string): ParsedTemplate {
           y,
           color: fill
         })
-        console.log(`  -> Added pixel at (${x}, ${y}) with color ${fill}`)
-      } else {
-        console.log(`  -> Skipped pixel at (${x}, ${y}) - opacity: ${opacity}, fill: ${fill}`)
       }
-    } else {
-      console.log(`Rect ${rectCount}: Missing required attributes`)
     }
   }
-  
-  console.log(`Final template: ${pixels.length} pixels extracted from ${rectCount} rect elements`)
   
   return {
     width,

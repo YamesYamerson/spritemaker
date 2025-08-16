@@ -573,7 +573,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     return newPixels
   }, [pixels, activeLayer, canvasSize])
 
-  // Draw circle based on bounding box (using midpoint circle algorithm)
+  // Draw circle based on bounding box with improved binary pixel system symmetry
   const drawCircle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color, isFilled: boolean = true) => {
     if (!activeLayer) return new Map(pixels)
     
@@ -609,10 +609,15 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       }
     } else {
-      // For border only, use the midpoint algorithm to draw just the outline
+      // For border only, use a completely different approach for small circles
+      // to ensure proper symmetry in binary pixel systems
+      
+      // Use the standard midpoint algorithm for all circles
       let x = radius
       let y = 0
       let err = 0
+      
+      const drawnPixels = new Set<string>()
       
       while (x >= y) {
         // Draw 8 octants
@@ -627,12 +632,15 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
           if (px < 0 || px >= canvasSize || py < 0 || py >= canvasSize) continue
           
           const key = `${px},${py}`
-          newPixels.set(key, {
-            x: px,
-            y: py,
-            color,
-            layerId: activeLayer.id
-          })
+          if (!drawnPixels.has(key)) {
+            drawnPixels.add(key)
+            newPixels.set(key, {
+              x: px,
+              y: py,
+              color,
+              layerId: activeLayer.id
+            })
+          }
         }
         
         if (err <= 0) {
@@ -642,6 +650,92 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         if (err > 0) {
           x -= 1
           err -= 2 * x + 1
+        }
+      }
+      
+      // For small circles (radius <= 4), ensure cardinal directions have thickness
+      if (radius <= 4) {
+        const cardinalDirections = [
+          [centerX, centerY - radius], // top
+          [centerX + radius, centerY], // right
+          [centerX, centerY + radius], // bottom
+          [centerX - radius, centerY]  // left
+        ]
+        
+        for (const [px, py] of cardinalDirections) {
+          if (px < 0 || px >= canvasSize || py < 0 || py >= canvasSize) continue
+          
+          const key = `${px},${py}`
+          if (drawnPixels.has(key)) {
+            // Add adjacent pixels to create thickness at cardinal directions
+            const adjacentPoints = []
+            
+            // For top/bottom, add left/right pixels
+            if (py === centerY - radius || py === centerY + radius) {
+              adjacentPoints.push([px - 1, py], [px + 1, py])
+            }
+            // For left/right, add top/bottom pixels
+            if (px === centerX - radius || px === centerX + radius) {
+              adjacentPoints.push([px, py - 1], [px, py + 1])
+            }
+            
+            // Add adjacent pixels if they're within bounds
+            for (const [adjX, adjY] of adjacentPoints) {
+              if (adjX < 0 || adjX >= canvasSize || adjY < 0 || adjY >= canvasSize) continue
+              
+              const adjKey = `${adjX},${adjY}`
+              if (!drawnPixels.has(adjKey)) {
+                drawnPixels.add(adjKey)
+                newPixels.set(adjKey, {
+                  x: adjX,
+                  y: adjY,
+                  color,
+                  layerId: activeLayer.id
+                })
+              }
+            }
+          }
+        }
+      } else {
+        // For larger circles, use the standard midpoint algorithm
+        let x = radius
+        let y = 0
+        let err = 0
+        
+        const drawnPixels = new Set<string>()
+        
+        while (x >= y) {
+          // Draw 8 octants
+          const points = [
+            [centerX + x, centerY + y], [centerX + y, centerY + x],
+            [centerX - y, centerY + x], [centerX - x, centerY + y],
+            [centerX - x, centerY - y], [centerX - y, centerY - x],
+            [centerX + y, centerY - x], [centerX + x, centerY - y]
+          ]
+          
+          for (const [px, py] of points) {
+            if (px < 0 || px >= canvasSize || py < 0 || py >= canvasSize) continue
+            
+            const key = `${px},${py}`
+            if (!drawnPixels.has(key)) {
+              drawnPixels.add(key)
+              newPixels.set(key, {
+                x: px,
+                y: py,
+                color,
+                layerId: activeLayer.id
+              })
+            }
+          }
+          
+          if (err <= 0) {
+            y += 1
+            err += 2 * y + 1
+          }
+          if (err > 0) {
+            x -= 1
+            err -= 2 * x + 1
+          }
         }
       }
     }
@@ -2223,16 +2317,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   // Expose canvas methods to parent
   useEffect(() => {
-    console.log('SpriteEditor: Exposing canvas methods, onCanvasRef:', !!onCanvasRef, 'canvasRef.current:', !!canvasRef.current)
-    
     // Call onCanvasRef to pass the canvas reference to parent
     if (onCanvasRef && canvasRef.current) {
-      console.log('SpriteEditor: Calling onCanvasRef with canvas reference')
       onCanvasRef(canvasRef)
     }
     
     if (onCanvasRef && canvasRef.current) {
-      console.log('SpriteEditor: Defining properties on canvas')
       // Expose undo/redo methods
       Object.defineProperty(canvasRef.current, 'undo', {
         value: undo,
@@ -2266,7 +2356,6 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         value: () => canvasSize,
         writable: true
       })
-      console.log('SpriteEditor: All properties defined, available methods:', Object.getOwnPropertyNames(canvasRef.current))
     }
   }, [onCanvasRef, undo, redo, canUndo, canRedo, getHistoryState, applyTemplate, pixels, canvasSize])
 

@@ -20,8 +20,7 @@ function App() {
   ])
   const [canvasRef, setCanvasRef] = useState<React.RefObject<HTMLCanvasElement> | null>(null)
   
-  // Debug canvasRef changes
-  console.log('App: canvasRef state:', canvasRef)
+  // Canvas reference state
   
   const [pixels, setPixels] = useState<Map<string, { x: number; y: number; color: string; layerId: number }>>(new Map())
   const [hasActiveSelection, setHasActiveSelection] = useState(false)
@@ -70,22 +69,18 @@ function App() {
   // File menu handlers
   const handleNewProject = () => {
     // TODO: Implement new project functionality
-    console.log('New Project clicked')
   }
 
   const handleOpenProject = () => {
     // TODO: Implement open project functionality
-    console.log('Open Project clicked')
   }
 
   const handleSaveProject = () => {
     // TODO: Implement save project functionality
-    console.log('Save Project clicked')
   }
 
   const handleSettings = () => {
     // TODO: Implement settings functionality
-    console.log('Settings clicked')
   }
 
 
@@ -238,9 +233,7 @@ function App() {
         {/* History Panel - Below Layer Panel */}
         <div style={{ 
           width: '100%',
-          height: '200px', // Fixed height to match HistoryPanel
-          minHeight: 0,
-          overflow: 'hidden'
+          flexShrink: 0
         }}>
           <HistoryPanel
             canvasRef={canvasRef}
