@@ -4,6 +4,7 @@ import Toolbar from './components/Toolbar'
 import LayerPanel from './components/LayerPanel'
 import ColorPicker from './components/ColorPicker'
 import CustomColorTemplatePicker from './components/CustomColorTemplatePicker'
+import TemplatePanel from './components/TemplatePanel'
 import HistoryPanel from './components/HistoryPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Tool, Color, Layer, GridSettings } from './types'
@@ -189,6 +190,7 @@ function App() {
               brushSize={brushSize}
               canvasSize={canvasSize}
               layers={layers}
+              pixels={pixels}
               onCanvasRef={setCanvasRef}
               onPrimaryColorChange={setPrimaryColor}
               onPixelsChange={setPixels}
@@ -238,6 +240,62 @@ function App() {
           <HistoryPanel
             canvasRef={canvasRef}
           />
+        </div>
+
+        {/* Template Panel - Below History Panel */}
+        <div style={{ 
+          width: '100%',
+          height: '200px', // Fixed height to match other panels
+          minHeight: 0,
+          overflow: 'hidden',
+          marginTop: '15px'
+        }}>
+          <ErrorBoundary>
+            <TemplatePanel
+              canvasSize={canvasSize}
+              onTemplateSelect={(templateData) => {
+                // Take a snapshot of current pixels before applying template
+                const previousPixels = new Map(pixels)
+                
+                // Convert template data to pixels and apply as main layer
+                const newPixels = new Map()
+                const currentLayerId = layers.length > 0 ? layers[layers.length - 1].id : 0
+                
+                // Calculate centering offsets
+                const templateWidth = templateData[0].length
+                const templateHeight = templateData.length
+                const offsetX = Math.floor((canvasSize - templateWidth) / 2)
+                const offsetY = Math.floor((canvasSize - templateHeight) / 2)
+                
+                // Apply template pixels as the main drawing, centered on canvas
+                templateData.forEach((row, y) => {
+                  row.forEach((color, x) => {
+                    if (color && color !== '') {
+                      const canvasX = x + offsetX
+                      const canvasY = y + offsetY
+                      const pixelKey = `${canvasX},${canvasY}`
+                      newPixels.set(pixelKey, {
+                        x: canvasX,
+                        y: canvasY,
+                        color,
+                        layerId: currentLayerId
+                      })
+                    }
+                  })
+                })
+                
+                // Store previous pixels in history or state for potential restoration
+                console.log('Previous drawing state saved, template applied as main layer:', {
+                  previousPixelsCount: previousPixels.size,
+                  templatePixelsCount: newPixels.size,
+                  templateData
+                })
+                
+                // Apply the template as the new main drawing
+                setPixels(newPixels)
+              }}
+            />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

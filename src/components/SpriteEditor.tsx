@@ -10,6 +10,7 @@ interface SpriteEditorProps {
   brushSize: number
   canvasSize: number
   layers: Layer[]
+  pixels: Map<string, PixelData> // Add pixels prop
   onCanvasRef?: (ref: React.RefObject<HTMLCanvasElement>) => void
   onPrimaryColorChange?: (color: Color) => void
   onPixelsChange?: (pixels: Map<string, PixelData>) => void
@@ -24,6 +25,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
   brushSize,
   canvasSize,
   layers,
+  pixels,
   onCanvasRef,
   onPrimaryColorChange,
   onPixelsChange,
@@ -32,7 +34,6 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
-  const [pixels, setPixels] = useState<Map<string, PixelData>>(new Map())
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null)
   
   // History management
@@ -98,12 +99,20 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
   }, [onCanvasRef])
 
-  // Notify parent of pixel changes
+  // Keep local pixels state for internal operations
+  const [localPixels, setLocalPixels] = useState<Map<string, PixelData>>(new Map())
+
+  // Sync local pixels with parent pixels when they change
   useEffect(() => {
-    if (onPixelsChange) {
-      onPixelsChange(pixels)
-    }
-  }, [pixels, onPixelsChange])
+    setLocalPixels(new Map(pixels))
+  }, [pixels])
+
+  // Remove the problematic useEffect that was causing infinite loop
+  // useEffect(() => {
+  //   if (onPixelsChange) {
+  //     onPixelsChange(localPixels)
+  //   }
+  // }, [localPixels, onPixelsChange])
 
   // Notify parent of selection changes
   useEffect(() => {
@@ -189,11 +198,11 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     })
     
     // Remove the pixels from the canvas
-    const newPixels = new Map(pixels)
+    const newPixels = new Map(localPixels)
     pixelsToRemove.forEach(({ x, y }) => {
       newPixels.delete(`${x},${y}`)
     })
-    setPixels(newPixels)
+    setLocalPixels(newPixels)
     
     // Store in clipboard
     setClipboard({
@@ -222,7 +231,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     
     // Clear the selection after cutting
     setSelection(null)
-  }, [selection, pixels, activeLayer, canvasSize])
+  }, [selection, localPixels, activeLayer, canvasSize])
 
   // Paste pixels from clipboard
   const handlePaste = useCallback(() => {
@@ -240,7 +249,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     const pasteStartY = centerY - Math.floor(pasteHeight / 2)
     
     // Create new pixels map with pasted content
-    const newPixels = new Map(pixels)
+    const newPixels = new Map(localPixels)
     const pixelsToAdd: Array<{ x: number; y: number; color: Color }> = []
     
     // Convert relative coordinates to absolute paste position
@@ -270,7 +279,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     })
     
-    setPixels(newPixels)
+    setLocalPixels(newPixels)
     
     // Create history entry for paste operation
     const operation = historyManagerRef.current.createStrokeOperation(
@@ -279,7 +288,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       pixelsToAdd.map(p => ({
         x: p.x,
         y: p.y,
-        previousColor: pixels.get(`${p.x},${p.y}`)?.color || 'transparent',
+        previousColor: localPixels.get(`${p.x},${p.y}`)?.color || 'transparent',
         newColor: p.color
       }))
     )
@@ -304,7 +313,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
       content: clipboard.pixels
     })
-  }, [clipboard, activeLayer, pixels, canvasSize])
+  }, [clipboard, activeLayer, localPixels, canvasSize])
 
   // Handle keyboard events for selection management
   useEffect(() => {
@@ -420,7 +429,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   // Initialize canvas when size changes
   useEffect(() => {
-    setPixels(new Map())
+    setLocalPixels(new Map())
     setLastPos(null)
     setSelection(null)
     historyManagerRef.current.clear()
@@ -468,12 +477,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       if (pixelX < 0 || pixelX >= canvasSize || pixelY < 0 || pixelY >= canvasSize) return
       
       const key = `${pixelX},${pixelY}`
-      const existingPixel = pixels.get(key)
+      const existingPixel = localPixels.get(key)
       
       // Only update if the pixel actually changes
       if (color === 'transparent') {
         if (existingPixel) {
-          setPixels(prevPixels => {
+          setLocalPixels(prevPixels => {
             const newPixels = new Map(prevPixels)
             newPixels.delete(key)
             return newPixels
@@ -481,7 +490,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       } else {
         if (!existingPixel || existingPixel.color !== color) {
-          setPixels(prevPixels => {
+          setLocalPixels(prevPixels => {
             const newPixels = new Map(prevPixels)
             newPixels.set(key, {
               x: pixelX,
@@ -494,18 +503,18 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       }
     })
-  }, [pixels, activeLayer, currentDrawingAction.isActive, brushSize, canvasSize, currentBrushPattern])
+  }, [localPixels, activeLayer, currentDrawingAction.isActive, brushSize, canvasSize, currentBrushPattern])
 
   // Draw rectangle between two points
   const drawRectangle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color, isFilled: boolean = true) => {
-    if (!activeLayer) return new Map(pixels)
+    if (!activeLayer) return new Map(localPixels)
     
     const minX = Math.min(startX, endX)
     const maxX = Math.max(startX, endX)
     const minY = Math.min(startY, endY)
     const maxY = Math.max(startY, endY)
     
-    const newPixels = new Map(pixels)
+    const newPixels = new Map(localPixels)
     
     if (!isFilled) {
       // For border only, we need to draw just the outline
@@ -574,13 +583,13 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     }
     
-    setPixels(newPixels)
+    setLocalPixels(newPixels)
     return newPixels
-  }, [pixels, activeLayer, canvasSize])
+  }, [localPixels, activeLayer, canvasSize])
 
   // Draw circle based on bounding box (using midpoint circle algorithm)
   const drawCircle = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color, isFilled: boolean = true) => {
-    if (!activeLayer) return new Map(pixels)
+    if (!activeLayer) return new Map(localPixels)
     
     // Calculate center as the middle of the bounding box
     const centerX = Math.floor((startX + endX) / 2)
@@ -589,7 +598,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     // Calculate radius as the distance from center to any corner of the bounding box
     const radius = Math.max(1, Math.floor(Math.sqrt((endX - centerX) ** 2 + (endY - centerY) ** 2)))
     
-    const newPixels = new Map(pixels)
+    const newPixels = new Map(localPixels)
     
     if (isFilled) {
       // Fill the entire circle area
@@ -651,15 +660,15 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     }
     
-    setPixels(newPixels)
+    setLocalPixels(newPixels)
     return newPixels
-  }, [pixels, activeLayer, canvasSize])
+  }, [localPixels, activeLayer, canvasSize])
 
   // Draw line between two points using Bresenham's algorithm
   const drawLine = useCallback((startX: number, startY: number, endX: number, endY: number, color: Color) => {
-    if (!activeLayer) return new Map(pixels)
+    if (!activeLayer) return new Map(localPixels)
     
-    const newPixels = new Map(pixels)
+    const newPixels = new Map(localPixels)
     
     // Use Bresenham's line algorithm
     let x0 = startX
@@ -676,7 +685,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     while (true) {
       if (x0 >= 0 && x0 < canvasSize && y0 >= 0 && y0 < canvasSize) {
         const key = `${x0},${y0}`
-        const existingPixel = pixels.get(key)
+        const existingPixel = localPixels.get(key)
         
         if (color === 'transparent') {
           if (existingPixel) {
@@ -705,9 +714,9 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     }
     
-    setPixels(newPixels)
+    setLocalPixels(newPixels)
     return newPixels
-  }, [pixels, activeLayer, canvasSize])
+  }, [localPixels, activeLayer, canvasSize])
 
   // New method for drawing with brush patterns that takes drawing action as parameter
   const drawWithBrushPatternWithAction = useCallback((x: number, y: number, color: Color, drawingAction: any) => {
@@ -718,12 +727,12 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       if (pixelX < 0 || pixelX >= canvasSize || pixelY < 0 || pixelY >= canvasSize) return
       
       const key = `${pixelX},${pixelY}`
-      const existingPixel = pixels.get(key)
+      const existingPixel = localPixels.get(key)
       
       // Only update if the pixel actually changes
       if (color === 'transparent') {
         if (existingPixel) {
-          setPixels(prevPixels => {
+          setLocalPixels(prevPixels => {
             const newPixels = new Map(prevPixels)
             newPixels.delete(key)
             return newPixels
@@ -731,7 +740,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       } else {
         if (!existingPixel || existingPixel.color !== color) {
-          setPixels(prevPixels => {
+          setLocalPixels(prevPixels => {
             const newPixels = new Map(prevPixels)
             newPixels.set(key, {
               x: pixelX,
@@ -744,7 +753,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         }
       }
     })
-  }, [pixels, activeLayer, brushSize, canvasSize, currentBrushPattern])
+  }, [localPixels, activeLayer, brushSize, canvasSize, currentBrushPattern])
 
   // Apply a stroke operation (for undo/redo)
   const applyStrokeOperation = useCallback((operation: StrokeOperation, reverse: boolean = false) => {
@@ -783,7 +792,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     if (operation.tool === 'cut' && operation.metadata?.selectionBounds) {
       if (reverse) {
         // Undo: restore the cut pixels
-        const newPixels = new Map(pixels)
+        const newPixels = new Map(localPixels)
         operation.pixels.forEach(({ x, y, previousColor }) => {
           if (previousColor !== 'transparent') {
             newPixels.set(`${x},${y}`, {
@@ -794,7 +803,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
             })
           }
         })
-        setPixels(newPixels)
+        setLocalPixels(newPixels)
         
         // Restore selection
         const bounds = operation.metadata.selectionBounds
@@ -835,7 +844,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
             })
           }
         })
-        setPixels(newPixels)
+        setLocalPixels(newPixels)
         
         // Clear selection
         setSelection(null)
@@ -854,7 +863,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
             })
           }
         })
-        setPixels(newPixels)
+        setLocalPixels(newPixels)
         
         // Restore selection around pasted content
         const bounds = operation.metadata.pasteBounds
@@ -901,8 +910,8 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       }
     })
     
-    setPixels(newPixels)
-  }, [pixels])
+    setLocalPixels(newPixels)
+  }, [localPixels])
 
   // Dispatch history change events when operations are added
   const dispatchHistoryChange = useCallback(() => {
@@ -1000,7 +1009,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
     
     // After flood fill is complete, update the state with all changes at once
-    setPixels(new Map(localPixels))
+    setLocalPixels(new Map(localPixels))
 
     // Record the fill operation in history
     if (fillChanges.length > 0 && activeLayer) {
@@ -1246,7 +1255,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
         
         // Batch update all pixels at once
         if (pixelsToUpdate.size > 0) {
-          setPixels(prevPixels => {
+          setLocalPixels(prevPixels => {
             const newPixels = new Map(prevPixels)
             
             pixelsToUpdate.forEach((pixelData, key) => {
@@ -1612,7 +1621,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
       
       // Update pixels
-      setPixels(newPixels)
+      setLocalPixels(newPixels)
       
       // Create history entry for the move operation
       const pixelChanges: Array<{
