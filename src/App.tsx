@@ -3,6 +3,7 @@ import SpriteEditor from './components/SpriteEditor'
 import Toolbar from './components/Toolbar'
 import LayerPanel from './components/LayerPanel'
 import ColorPicker from './components/ColorPicker'
+import CustomColorTemplatePicker from './components/CustomColorTemplatePicker'
 import HistoryPanel from './components/HistoryPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Tool, Color, Layer, GridSettings } from './types'
@@ -129,6 +130,19 @@ function App() {
               onPrimaryColorChange={setPrimaryColor}
               secondaryColor={secondaryColor}
               onSecondaryColorChange={setSecondaryColor}
+            />
+          </ErrorBoundary>
+        </div>
+
+        {/* Custom Color Template Picker - Below Color Picker */}
+        <div style={{ 
+          width: '100%',
+          flexShrink: 0,
+          marginTop: '15px'
+        }}>
+          <ErrorBoundary>
+            <CustomColorTemplatePicker
+              onColorSelect={setPrimaryColor}
             />
           </ErrorBoundary>
         </div>
