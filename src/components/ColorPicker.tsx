@@ -299,85 +299,117 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
   }, [primaryColor, secondaryColor, onPrimaryColorChange, onSecondaryColorChange])
 
   return (
-    <div className="color-picker" style={{
+    <div style={{
       width: '100%',
-      padding: '15px'
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      {/* Main color display */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+      {/* Color Picker Card */}
+      <div style={{
+        backgroundColor: '#2a2a2a',
+        border: '1px solid #555',
+        borderRadius: '4px',
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Color Picker Header */}
         <div style={{
-          width: '40px',
-          height: '40px',
-          position: 'relative',
-          border: '2px solid #fff',
-          borderRadius: '4px',
-          overflow: 'hidden'
-        }}>
-          {/* Checkerboard background to show transparency */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `
-              linear-gradient(45deg, #ccc 25%, transparent 25%),
-              linear-gradient(-45deg, #ccc 25%, transparent 25%),
-              linear-gradient(45deg, transparent 75%, #ccc 75%),
-              linear-gradient(-45deg, transparent 75%, #ccc 75%)
-            `,
-            backgroundSize: '8px 8px',
-            backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
-          }} />
-          {/* Primary color display */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: primaryColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: getContrastTextColor(primaryColor),
-            fontWeight: 'bold'
-          }}>
-            I
-          </div>
-        </div>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          backgroundColor: secondaryColor,
-          border: '2px solid #fff',
-          borderRadius: '4px',
+          padding: '8px 12px',
+          borderBottom: '1px solid #555',
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          justifyContent: 'center',
-          color: getContrastTextColor(secondaryColor),
-          fontWeight: 'bold'
+          flexShrink: 0
         }}>
-          II
+          <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            Color Picker
+          </span>
         </div>
-        <button
-          onClick={handleSwapColors}
-          style={{
-            padding: '8px',
-            backgroundColor: '#555',
-            border: 'none',
-            borderRadius: '4px',
-            color: '#fff',
-            cursor: 'pointer',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          Swap Colors
-        </button>
-      </div>
+
+        {/* Color Picker Content */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          padding: '12px'
+        }}>
+          {/* Main color display */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              position: 'relative',
+              border: '2px solid #fff',
+              borderRadius: '4px',
+              overflow: 'hidden'
+            }}>
+              {/* Checkerboard background to show transparency */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundImage: `
+                  linear-gradient(45deg, #ccc 25%, transparent 25%),
+                  linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                  linear-gradient(45deg, transparent 75%, #ccc 75%),
+                  linear-gradient(-45deg, transparent 75%, #ccc 75%)
+                `,
+                backgroundSize: '8px 8px',
+                backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
+              }} />
+              {/* Primary color display */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: primaryColor,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: getContrastTextColor(primaryColor),
+                fontWeight: 'bold'
+              }}>
+                I
+              </div>
+            </div>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: secondaryColor,
+              border: '2px solid #fff',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: getContrastTextColor(secondaryColor),
+              fontWeight: 'bold'
+            }}>
+              II
+            </div>
+            <button
+              onClick={handleSwapColors}
+              style={{
+                padding: '8px',
+                backgroundColor: '#4a4a4a',
+                border: '1px solid #555',
+                borderRadius: '3px',
+                color: '#fff',
+                cursor: 'pointer',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              Swap Colors
+            </button>
+          </div>
 
       {/* Gradient picker */}
       <div style={{ marginBottom: '15px', position: 'relative' }}>
@@ -513,6 +545,8 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             }}
           />
         ))}
+      </div>
+        </div>
       </div>
     </div>
   )
