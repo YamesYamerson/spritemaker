@@ -188,7 +188,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 key={tool.id}
                 ref={brushDropdownRef}
                 style={{ 
-                  position: 'relative'
+                  position: 'relative',
+                  marginLeft: '8px'
                 }}
               >
                 <button
@@ -326,6 +327,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               className={`tool-button ${selectedTool === tool.id || (tool.id === 'select' && hasActiveSelection) ? 'active' : ''}`}
               onClick={() => safeToolSelect(tool.id)}
               title={tool.name}
+              style={tool.id === 'line' ? { marginLeft: '8px' } : {}}
             >
               {tool.iconType === 'svg' ? (
                 <img src={tool.icon} alt={tool.name} style={{ width: '20px', height: '20px' }} />
@@ -345,8 +347,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <div 
           ref={rectangleDropdownRef}
           style={{ 
-            position: 'relative',
-            marginLeft: '8px'
+            position: 'relative'
           }}
         >
           <button
