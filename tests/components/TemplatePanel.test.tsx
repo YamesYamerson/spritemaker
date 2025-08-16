@@ -61,28 +61,27 @@ describe('TemplatePanel', () => {
   })
 
   it('renders template panel with correct title and count', () => {
+    mockTemplateManager.getTemplatesBySize.mockReturnValue([mockTemplates[0]])
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
     expect(screen.getByText('Templates (2)')).toBeInTheDocument()
-    expect(screen.getByText('Current Canvas: 32x32')).toBeInTheDocument()
   })
 
   it('filters templates by current canvas size', () => {
     mockTemplateManager.getTemplatesBySize.mockReturnValue([mockTemplates[0]])
-    
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
-    // Should only show 32x32 templates
-    expect(screen.getByText('Test Template 32x32')).toBeInTheDocument()
+    // Should only show 32x32 templates - get the first occurrence (main display)
+    const templateNames = screen.getAllByText('Test Template 32x32')
+    expect(templateNames[0]).toBeInTheDocument()
     expect(screen.queryByText('Test Template 64x64')).not.toBeInTheDocument()
   })
 
   it('shows message when no templates exist for current size', () => {
     mockTemplateManager.getTemplatesBySize.mockReturnValue([])
-    
     render(<TemplatePanel currentCanvasSize={16} canvasRef={mockCanvasRef as any} />)
     
-    expect(screen.getByText('No templates for 16x16 canvas. Create one by drawing and saving!')).toBeInTheDocument()
+    expect(screen.getByText('No templates found for 16x16 canvas')).toBeInTheDocument()
   })
 
   it('opens save modal when save button is clicked', () => {
@@ -128,14 +127,16 @@ describe('TemplatePanel', () => {
 
   it('shows template details correctly', () => {
     mockTemplateManager.getTemplatesBySize.mockReturnValue([mockTemplates[0]])
-    
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
-    expect(screen.getByText('Test Template 32x32')).toBeInTheDocument()
-    expect(screen.getByText('A test template')).toBeInTheDocument()
-    expect(screen.getByText('32x32 • 1 pixels')).toBeInTheDocument()
-    expect(screen.getByText('test')).toBeInTheDocument()
-    expect(screen.getByText('32x32')).toBeInTheDocument()
+    // Check that the template name is visible (main display, not tooltip) - get first occurrence
+    const templateNames = screen.getAllByText('Test Template 32x32')
+    expect(templateNames[0]).toBeInTheDocument()
+    
+    // Check that the thumbnail is visible
+    const thumbnail = screen.getByAltText('Test Template 32x32 preview')
+    expect(thumbnail).toBeInTheDocument()
+    expect(thumbnail.tagName).toBe('IMG')
   })
 
   it('deletes template when delete button is clicked', () => {
@@ -155,56 +156,56 @@ describe('TemplatePanel', () => {
 
   it('filters templates by search query', () => {
     mockTemplateManager.getTemplatesBySize.mockReturnValue([mockTemplates[0]])
-    
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
     const searchInput = screen.getByPlaceholderText('Search templates...')
     fireEvent.change(searchInput, { target: { value: 'Test' } })
     
-    expect(screen.getByText('Test Template 32x32')).toBeInTheDocument()
+    // Should show the matching template (main display, not tooltip) - get first occurrence
+    const templateNames = screen.getAllByText('Test Template 32x32')
+    expect(templateNames[0]).toBeInTheDocument()
   })
 
   it('shows no results message when search has no matches', () => {
     mockTemplateManager.getTemplatesBySize.mockReturnValue([mockTemplates[0]])
-    
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
     const searchInput = screen.getByPlaceholderText('Search templates...')
     fireEvent.change(searchInput, { target: { value: 'Nonexistent' } })
     
-    expect(screen.getByText('No templates found')).toBeInTheDocument()
+    expect(screen.getByText('No templates found for 32x32 canvas')).toBeInTheDocument()
   })
 
   it('collapses and expands correctly', () => {
+    mockTemplateManager.getTemplatesBySize.mockReturnValue([mockTemplates[0]])
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
-    // Initially expanded
-    expect(screen.getByText('Current Canvas: 32x32')).toBeInTheDocument()
+    // Initially expanded - get first occurrence (main display, not tooltip)
+    const templateNames = screen.getAllByText('Test Template 32x32')
+    expect(templateNames[0]).toBeInTheDocument()
     
     // Collapse
     const collapseButton = screen.getByTitle('Collapse')
     fireEvent.click(collapseButton)
     
     // Should be collapsed
-    expect(screen.queryByText('Current Canvas: 32x32')).not.toBeInTheDocument()
-    expect(screen.getByText('Templates (2)')).toBeInTheDocument()
+    expect(screen.queryByText('Test Template 32x32')).not.toBeInTheDocument()
     
     // Expand
     const expandButton = screen.getByTitle('Expand')
     fireEvent.click(expandButton)
     
-    // Should be expanded again
-    expect(screen.getByText('Current Canvas: 32x32')).toBeInTheDocument()
+    // Should be expanded again - get first occurrence (main display, not tooltip)
+    const templateNamesAfterExpand = screen.getAllByText('Test Template 32x32')
+    expect(templateNamesAfterExpand[0]).toBeInTheDocument()
   })
 
   it('shows appropriate message when no templates exist', () => {
     mockTemplateManager.getAllTemplates.mockReturnValue([])
-    mockTemplateManager.getTemplatesBySize.mockReturnValue([])
-    
     render(<TemplatePanel currentCanvasSize={32} canvasRef={mockCanvasRef as any} />)
     
     // Should show message about creating templates manually
-    expect(screen.getByText('No templates for 32x32 canvas. Create one by drawing and saving!')).toBeInTheDocument()
+    expect(screen.getByText('No templates found for 32x32 canvas')).toBeInTheDocument()
     
     // Should not create any sample templates automatically
     expect(mockTemplateManager.saveTemplate).not.toHaveBeenCalled()

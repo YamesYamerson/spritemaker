@@ -21,17 +21,14 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [templates, setTemplates] = useState<SavedTemplate[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null)
 
   const templateManager = TemplateManager.getInstance()
-
-
 
   // Load templates on mount
   useEffect(() => {
     loadTemplates()
   }, [])
-
-
 
   const loadTemplates = () => {
     const allTemplates = templateManager.getAllTemplates()
@@ -148,6 +145,69 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
            template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
            template.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   })
+
+  if (isCollapsed) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#2a2a2a',
+        border: '1px solid #555',
+        borderRadius: '4px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          padding: '8px 12px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexShrink: 0
+        }}>
+          <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+            Templates ({templates.length})
+          </span>
+          <button
+            onClick={() => setIsCollapsed(false)}
+            style={{
+              padding: '4px 8px',
+              backgroundColor: '#4a4a4a',
+              border: '1px solid #555',
+              borderRadius: '3px',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              minWidth: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Expand"
+          >
+            <svg
+              fill="currentColor"
+              height="12"
+              width="12"
+              viewBox="0 0 12 12"
+              style={{ transform: 'rotate(180deg)', transition: 'transform 0.2s ease' }}
+            >
+              <path
+                d="M2 4l4 4 4-4"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{
@@ -273,33 +333,14 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
               padding: '12px',
               overflowY: 'auto'
             }}>
-              {/* Current Canvas Size Info */}
-              <div style={{
-                backgroundColor: '#3a3a3a',
-                border: '1px solid #555',
-                borderRadius: '4px',
-                padding: '8px 12px',
-                marginBottom: '12px',
-                textAlign: 'center',
-                flexShrink: 0
-              }}>
-                <span style={{
-                  color: '#4a7cff',
-                  fontSize: '12px',
-                  fontWeight: '500'
-                }}>
-                  Current Canvas: {currentCanvasSize}x{currentCanvasSize}
-                </span>
-              </div>
-
               {filteredTemplates.length === 0 ? (
                 <div style={{
-                  color: '#aaa',
-                  fontSize: '12px',
+                  padding: '20px',
                   textAlign: 'center',
-                  padding: '20px'
+                  color: '#666',
+                  fontSize: '12px'
                 }}>
-                  {searchQuery ? 'No templates found' : `No templates for ${currentCanvasSize}x${currentCanvasSize} canvas. Create one by drawing and saving!`}
+                  No templates found for {currentCanvasSize}x{currentCanvasSize} canvas
                 </div>
               ) : (
                 filteredTemplates.map(template => (
@@ -309,10 +350,14 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                       backgroundColor: '#3a3a3a',
                       border: '1px solid #555',
                       borderRadius: '4px',
-                      padding: '12px',
+                      padding: '8px',
                       marginBottom: '8px',
                       cursor: 'pointer',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'background-color 0.2s'
                     }}
                     onClick={() => handleTemplateSelect(template)}
                     onMouseEnter={(e) => {
@@ -321,81 +366,166 @@ const TemplatePanel: React.FC<TemplatePanelProps> = ({
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = '#3a3a3a'
                     }}
+                    title={`${template.name}${template.description ? ` - ${template.description}` : ''}${template.tags && template.tags.length > 0 ? `\nTags: ${template.tags.join(', ')}` : ''}\nSize: ${template.width}x${template.height} • ${template.pixels.length} pixels`}
                   >
+                    {/* Template Thumbnail - Now using actual template preview */}
                     <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '8px'
+                      width: '32px',
+                      height: '32px',
+                      border: '1px solid #555',
+                      borderRadius: '3px',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      backgroundColor: '#f0f0f0' // Light background for better visibility
                     }}>
-                      <div style={{ flex: 1 }}>
+                      {template.pixels.length > 0 ? (
+                        <img
+                          src={TemplateManager.generatePreview(template.pixels, template.width, template.height)}
+                          alt={`${template.name} preview`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      ) : (
                         <div style={{
-                          color: '#fff',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          marginBottom: '4px'
-                        }}>
-                          {template.name}
-                        </div>
-                        {template.description && (
-                          <div style={{
-                            color: '#aaa',
-                            fontSize: '12px',
-                            marginBottom: '4px'
-                          }}>
-                            {template.description}
-                          </div>
-                        )}
-                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           color: '#888',
-                          fontSize: '11px'
+                          fontSize: '10px',
+                          textAlign: 'center'
                         }}>
-                          {template.width}x{template.height} • {template.pixels.length} pixels
+                          ○
                         </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteTemplate(template.id)
-                        }}
-                        style={{
-                          padding: '2px 6px',
-                          backgroundColor: '#d32f2f',
-                          border: '1px solid #d32f2f',
-                          borderRadius: '3px',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          fontSize: '10px'
-                        }}
-                        title="Delete Template"
-                      >
-                        ×
-                      </button>
+                      )}
                     </div>
                     
-                    {template.tags && template.tags.length > 0 && (
+                    {/* Template Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                         display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '4px',
-                        marginTop: '8px'
+                        alignItems: 'center',
+                        gap: '4px'
                       }}>
-                        {template.tags.map(tag => (
-                          <span
-                            key={tag}
-                            style={{
-                              backgroundColor: '#555',
-                              color: '#fff',
-                              padding: '2px 6px',
-                              borderRadius: '10px',
-                              fontSize: '10px'
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                        {template.name}
+                        <button
+                          style={{
+                            padding: '0',
+                            backgroundColor: '#4a4a4a',
+                            border: '2px solid #555',
+                            borderRadius: '50%',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '16px',
+                            height: '16px',
+                            transition: 'all 0.2s',
+                            flexShrink: 0,
+                            lineHeight: '1',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#3a3a3a'
+                            e.currentTarget.style.borderColor = '#666'
+                            e.currentTarget.style.color = '#fff'
+                            setHoveredTemplate(template.name)
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#4a4a4a'
+                            e.currentTarget.style.borderColor = '#555'
+                            e.currentTarget.style.color = '#fff'
+                            setHoveredTemplate(null)
+                          }}
+                        >
+                          <span style={{ marginTop: '-1px' }}>ℹ</span>
+                          {/* Custom Tooltip */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            marginBottom: '8px',
+                            backgroundColor: '#2a2a2a',
+                            border: '1px solid #555',
+                            borderRadius: '4px',
+                            padding: '8px 12px',
+                            color: '#fff',
+                            fontSize: '11px',
+                            whiteSpace: 'pre-line',
+                            minWidth: '200px',
+                            textAlign: 'center',
+                            zIndex: 1000,
+                            opacity: hoveredTemplate === template.name ? 1 : 0,
+                            visibility: hoveredTemplate === template.name ? 'visible' : 'hidden',
+                            transition: 'opacity 0.2s, visibility 0.2s',
+                            pointerEvents: 'none'
+                          }}>
+                            <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                              {template.name}
+                            </div>
+                            {template.description && (
+                              <div style={{ color: '#ccc', marginBottom: '4px' }}>
+                                {template.description}
+                              </div>
+                            )}
+                            {template.tags && template.tags.length > 0 && (
+                              <div style={{ color: '#888', marginBottom: '4px' }}>
+                                Tags: {template.tags.join(', ')}
+                              </div>
+                            )}
+                            <div style={{ color: '#888' }}>
+                              Size: {template.width}x{template.height}
+                            </div>
+                            {/* Tooltip Arrow */}
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              width: '0',
+                              height: '0',
+                              borderLeft: '6px solid transparent',
+                              borderRight: '6px solid transparent',
+                              borderTop: '6px solid #2a2a2a'
+                            }} />
+                          </div>
+                        </button>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteTemplate(template.id)
+                      }}
+                      style={{
+                        padding: '2px 6px',
+                        backgroundColor: '#d32f2f',
+                        border: '1px solid #d32f2f',
+                        borderRadius: '3px',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontSize: '10px',
+                        flexShrink: 0
+                      }}
+                      title="Delete Template"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))
               )}
