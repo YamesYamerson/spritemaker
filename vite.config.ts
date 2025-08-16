@@ -5,8 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
-    open: true
+    open: true,
+    fs: {
+      allow: ['..']
+    }
   },
+  publicDir: 'public',
   build: {
     outDir: 'dist',
     sourcemap: true

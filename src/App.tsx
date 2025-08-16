@@ -19,6 +19,10 @@ function App() {
     { id: 1, name: 'Layer 1', visible: true, active: true }
   ])
   const [canvasRef, setCanvasRef] = useState<React.RefObject<HTMLCanvasElement> | null>(null)
+  
+  // Debug canvasRef changes
+  console.log('App: canvasRef state:', canvasRef)
+  
   const [pixels, setPixels] = useState<Map<string, { x: number; y: number; color: string; layerId: number }>>(new Map())
   const [hasActiveSelection, setHasActiveSelection] = useState(false)
   const [gridSettings, setGridSettings] = useState<GridSettings>({
@@ -85,10 +89,10 @@ function App() {
   }
 
   // Template handler
-  const handleTemplateSelect = (template: any, size: any) => {
+  const handleTemplateSelect = (template: any) => {
     // For now, just log the template selection
-    // TODO: Implement template application to canvas
-    console.log('Template selected:', template.name, 'Size:', size.width + 'x' + size.height)
+    // The actual template application is handled by TemplatePanel directly
+    console.log('Template selected:', template.name, 'Size:', template.width + 'x' + template.height)
   }
 
   return (

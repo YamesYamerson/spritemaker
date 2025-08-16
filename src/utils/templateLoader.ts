@@ -34,41 +34,63 @@ export async function loadTemplate(svgPath: string): Promise<ParsedTemplate> {
  * @returns Parsed template with pixel data
  */
 function parseSVGTemplate(svgContent: string): ParsedTemplate {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(svgContent, 'image/svg+xml')
+  console.log('Parsing SVG template with regex approach')
+  console.log('SVG content length:', svgContent.length)
   
-  // Get SVG dimensions
-  const svg = doc.querySelector('svg')
-  if (!svg) {
-    throw new Error('Invalid SVG: no svg element found')
-  }
+  // Extract width and height using regex
+  const widthMatch = svgContent.match(/width="(\d+)"/)
+  const heightMatch = svgContent.match(/height="(\d+)"/)
   
-  const width = parseInt(svg.getAttribute('width') || '0')
-  const height = parseInt(svg.getAttribute('height') || '0')
-  
-  if (!width || !height) {
+  if (!widthMatch || !heightMatch) {
     throw new Error('Invalid SVG: missing width or height')
   }
   
-  // Extract all rect elements (pixels)
-  const rects = doc.querySelectorAll('rect')
-  const pixels: TemplatePixel[] = []
+  const width = parseInt(widthMatch[1])
+  const height = parseInt(heightMatch[1])
   
-  rects.forEach(rect => {
-    const x = parseInt(rect.getAttribute('x') || '0')
-    const y = parseInt(rect.getAttribute('y') || '0')
-    const fill = rect.getAttribute('fill') || '#000000'
-    const opacity = parseFloat(rect.getAttribute('opacity') || '1')
+  console.log(`SVG dimensions: ${width}x${height}`)
+  
+  // Extract all rect elements using regex
+  const rectRegex = /<rect\s+([^>]+)\s*\/?>/g
+  const pixels: TemplatePixel[] = []
+  let match
+  let rectCount = 0
+  
+  while ((match = rectRegex.exec(svgContent)) !== null) {
+    rectCount++
+    const rectAttributes = match[1]
     
-    // Only include non-transparent pixels
-    if (opacity > 0 && fill !== 'none') {
-      pixels.push({
-        x,
-        y,
-        color: fill
-      })
+    // Extract x, y, fill, and opacity attributes
+    const xMatch = rectAttributes.match(/x="(\d+)"/)
+    const yMatch = rectAttributes.match(/y="(\d+)"/)
+    const fillMatch = rectAttributes.match(/fill="([^"]+)"/)
+    const opacityMatch = rectAttributes.match(/opacity="([^"]+)"/)
+    
+    if (xMatch && yMatch && fillMatch) {
+      const x = parseInt(xMatch[1])
+      const y = parseInt(yMatch[1])
+      const fill = fillMatch[1]
+      const opacity = opacityMatch ? parseFloat(opacityMatch[1]) : 1
+      
+      console.log(`Rect ${rectCount}: x=${x}, y=${y}, fill=${fill}, opacity=${opacity}`)
+      
+      // Include pixels with any opacity > 0 (including 0.8)
+      if (opacity > 0 && fill !== 'none') {
+        pixels.push({
+          x,
+          y,
+          color: fill
+        })
+        console.log(`  -> Added pixel at (${x}, ${y}) with color ${fill}`)
+      } else {
+        console.log(`  -> Skipped pixel at (${x}, ${y}) - opacity: ${opacity}, fill: ${fill}`)
+      }
+    } else {
+      console.log(`Rect ${rectCount}: Missing required attributes`)
     }
-  })
+  }
+  
+  console.log(`Final template: ${pixels.length} pixels extracted from ${rectCount} rect elements`)
   
   return {
     width,

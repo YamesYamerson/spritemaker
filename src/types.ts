@@ -22,13 +22,30 @@ export interface Template {
   name: string
   description: string
   sizes: TemplateSize[]
+  createdAt: number
+  updatedAt: number
+  author?: string
+  tags?: string[]
 }
 
 export interface TemplateSize {
   width: number
   height: number
-  svgPath: string
-  previewPath: string
+  pixels: PixelData[]
+  previewPath?: string // Optional: can generate from pixels
+}
+
+export interface SavedTemplate {
+  id: string
+  name: string
+  description: string
+  width: number
+  height: number
+  pixels: PixelData[]
+  createdAt: number
+  updatedAt: number
+  author?: string
+  tags?: string[]
 }
 
 // New types for undo/redo system
@@ -111,5 +128,7 @@ declare global {
     getHistoryState?: () => HistoryState
     addToHistory?: (operation: StrokeOperation) => void
     applyTemplate?: (templatePixels: Map<string, PixelData>) => void
+    getCurrentPixels?: () => Map<string, PixelData>
+    getCanvasSize?: () => number
   }
 }

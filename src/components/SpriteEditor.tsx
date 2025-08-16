@@ -2216,22 +2216,59 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     }
   }, [pixels, layers, canvasSize, pixelSize, gridSettings.visible, gridSettings.color, gridSettings.opacity, gridSettings.quarter, gridSettings.eighths, gridSettings.sixteenths, gridSettings.thirtyseconds, gridSettings.sixtyfourths, shapePreview, primaryColor, selection, selectedTool, lassoPath, animationTime, isMovingSelection, moveOffset])
 
+  // Get history state
+  const getHistoryState = useCallback(() => {
+    return historyManagerRef.current.getState()
+  }, [])
+
   // Expose canvas methods to parent
   useEffect(() => {
-    if (onCanvasRef) {
-      // Add our custom methods to the canvas ref
-      const canvas = canvasRef.current
-      if (canvas) {
-        ;(canvas as any).undo = undo
-        ;(canvas as any).redo = redo
-        ;(canvas as any).canUndo = canUndo
-        ;(canvas as any).canRedo = canRedo
-        ;(canvas as any).getHistoryState = () => historyManagerRef.current.getState()
-        ;(canvas as any).applyTemplate = applyTemplate
-      }
+    console.log('SpriteEditor: Exposing canvas methods, onCanvasRef:', !!onCanvasRef, 'canvasRef.current:', !!canvasRef.current)
+    
+    // Call onCanvasRef to pass the canvas reference to parent
+    if (onCanvasRef && canvasRef.current) {
+      console.log('SpriteEditor: Calling onCanvasRef with canvas reference')
       onCanvasRef(canvasRef)
     }
-  }, [onCanvasRef, undo, redo, canUndo, canRedo, applyTemplate])
+    
+    if (onCanvasRef && canvasRef.current) {
+      console.log('SpriteEditor: Defining properties on canvas')
+      // Expose undo/redo methods
+      Object.defineProperty(canvasRef.current, 'undo', {
+        value: undo,
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'redo', {
+        value: redo,
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'canUndo', {
+        value: canUndo,
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'canRedo', {
+        value: canRedo,
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'getHistoryState', {
+        value: getHistoryState,
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'applyTemplate', {
+        value: applyTemplate,
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'getCurrentPixels', {
+        value: () => new Map(pixels),
+        writable: true
+      })
+      Object.defineProperty(canvasRef.current, 'getCanvasSize', {
+        value: () => canvasSize,
+        writable: true
+      })
+      console.log('SpriteEditor: All properties defined, available methods:', Object.getOwnPropertyNames(canvasRef.current))
+    }
+  }, [onCanvasRef, undo, redo, canUndo, canRedo, getHistoryState, applyTemplate, pixels, canvasSize])
 
   return (
     <div className="canvas-container">

@@ -19,6 +19,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmText = 'Yes',
   cancelText = 'No'
 }) => {
+  console.log('ConfirmModal rendering:', { isOpen, title })
+
   if (!isOpen) return null
 
   return (
