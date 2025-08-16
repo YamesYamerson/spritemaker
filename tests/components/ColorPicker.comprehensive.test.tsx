@@ -97,7 +97,7 @@ describe('ColorPicker - Comprehensive Tests', () => {
       // Check for main elements that should exist
       expect(screen.getByText('Swap Colors')).toBeInTheDocument()
       expect(screen.getByDisplayValue('#ff0000')).toBeInTheDocument() // Hex input
-      expect(screen.getByDisplayValue(/hsla/)).toBeInTheDocument() // HSLA input
+      expect(screen.getByText('Color Picker')).toBeInTheDocument() // Header title
     })
 
     it('should highlight selected color swatch', () => {
@@ -145,8 +145,8 @@ describe('ColorPicker - Comprehensive Tests', () => {
       );
 
       // Find actual color swatches by looking for elements with specific dimensions and background colors
-      // Color swatches have width: 20px, height: 20px and are in the swatch grid
-      const swatches = document.querySelectorAll('div[style*="width: 20px"][style*="height: 20px"][style*="background-color"]');
+      // Color swatches have width: 22px, height: 22px and are in the swatch grid
+      const swatches = document.querySelectorAll('div[style*="width: 22px"][style*="height: 22px"][style*="background-color"]');
       
       // Find a swatch that's not the current primary color (#ff0000)
       let targetSwatch: HTMLElement | null = null;
@@ -257,7 +257,7 @@ describe('ColorPicker - Comprehensive Tests', () => {
       render(<ColorPicker {...defaultProps} />);
       
       const canvases = document.querySelectorAll('canvas');
-      expect(canvases.length).toBe(3); // gradient, hue, alpha
+      expect(canvases.length).toBe(2); // gradient, hue (alpha removed)
       
       // Check that each canvas has the correct attributes
       canvases.forEach(canvas => {
@@ -278,9 +278,7 @@ describe('ColorPicker - Comprehensive Tests', () => {
       expect(gradientCanvas).toHaveAttribute('width', '160');
       expect(gradientCanvas).toHaveAttribute('height', '120');
       expect(hueCanvas).toHaveAttribute('width', '160');
-      expect(hueCanvas).toHaveAttribute('height', '30'); // Updated from 20 to 30
-      expect(alphaCanvas).toHaveAttribute('width', '160');
-      expect(alphaCanvas).toHaveAttribute('height', '30'); // Updated from 20 to 30
+      expect(hueCanvas).toHaveAttribute('height', '15'); // Updated from 30 to 15
     });
   });
 
@@ -404,20 +402,13 @@ describe('ColorPicker - Comprehensive Tests', () => {
     it('should display HSV values', () => {
       render(<ColorPicker {...defaultProps} />);
       
-      // Should display H, S, V, and A values
+      // Should display H, S, V values (alpha removed)
       expect(screen.getByText(/H:/)).toBeInTheDocument();
       expect(screen.getByText(/S:/)).toBeInTheDocument();
       expect(screen.getByText(/V:/)).toBeInTheDocument();
-      expect(screen.getByText(/A:/)).toBeInTheDocument();
     });
 
-    it('should display alpha value as percentage', () => {
-      render(<ColorPicker {...defaultProps} />);
-      
-      // Alpha should be displayed as a percentage
-      const alphaDisplay = screen.getByText(/A:/);
-      expect(alphaDisplay).toBeInTheDocument();
-    });
+
   });
 
   describe('Color Markers', () => {
@@ -448,9 +439,7 @@ describe('ColorPicker - Comprehensive Tests', () => {
       render(<ColorPicker {...defaultProps} />)
       
       // Check for labels that exist
-      expect(screen.getByText('Hex:')).toBeInTheDocument()
-      expect(screen.getByText('HSLA:')).toBeInTheDocument()
-      expect(screen.getByText(/Alpha:/)).toBeInTheDocument() // Use regex to match "Alpha: 100%"
+      expect(screen.getByText('Color Picker')).toBeInTheDocument() // Header title
     })
 
     it('should have proper button text', () => {
@@ -462,9 +451,8 @@ describe('ColorPicker - Comprehensive Tests', () => {
     it('should have proper heading structure', () => {
       render(<ColorPicker {...defaultProps} />)
       
-      // Since we removed the "Color Picker" title, check for other structural elements
-      const colorPicker = screen.getByText('I').closest('.color-picker')
-      expect(colorPicker).toBeInTheDocument()
+      // Check for the new header structure
+      expect(screen.getByText('Color Picker')).toBeInTheDocument()
     })
   });
 
@@ -608,6 +596,68 @@ describe('ColorPicker - Comprehensive Tests', () => {
       
       // Input should still be functional
       expect(hexInput).toBeInTheDocument();
+    });
+  });
+
+  describe('New Styling and Layout', () => {
+    it('should have the new card container styling', () => {
+      render(<ColorPicker {...defaultProps} />);
+      
+      // Check for the new card container with dark background
+      const cardContainer = document.querySelector('[style*="background-color: rgb(42, 42, 42)"]');
+      expect(cardContainer).toBeInTheDocument();
+      
+      // Check for the border styling
+      const borderedContainer = document.querySelector('[style*="border: 1px solid #555"]');
+      expect(borderedContainer).toBeInTheDocument();
+    });
+
+    it('should have the new header with "Color Picker" title', () => {
+      render(<ColorPicker {...defaultProps} />);
+      
+      const header = screen.getByText('Color Picker');
+      expect(header).toBeInTheDocument();
+      
+      // Check that it's in a header section
+      const headerSection = header.closest('[style*="border-bottom: 1px solid #555"]');
+      expect(headerSection).toBeInTheDocument();
+    });
+
+    it('should have HSV values displayed in a grid layout', () => {
+      render(<ColorPicker {...defaultProps} />);
+      
+      // Check that HSV values are in a grid layout
+      const hsvContainer = screen.getByText(/H:/).closest('[style*="display: grid"]');
+      expect(hsvContainer).toBeInTheDocument();
+      
+      // Check that it's a 2-column grid
+      const gridStyle = hsvContainer?.getAttribute('style');
+      expect(gridStyle).toContain('grid-template-columns: 1fr 1fr');
+    });
+
+    it('should have color swatches in a 10-column grid', () => {
+      render(<ColorPicker {...defaultProps} />);
+      
+      // Check that color swatches are in a 10-column grid
+      const swatchContainer = document.querySelector('[style*="grid-template-columns: repeat(10, 22px)"]');
+      expect(swatchContainer).toBeInTheDocument();
+      
+      // Check that swatches are 22px x 22px
+      const swatches = document.querySelectorAll('div[style*="width: 22px"][style*="height: 22px"]');
+      expect(swatches.length).toBeGreaterThan(20);
+    });
+
+    it('should have properly styled swap colors button', () => {
+      render(<ColorPicker {...defaultProps} />);
+      
+      const swapButton = screen.getByText('Swap Colors');
+      expect(swapButton).toBeInTheDocument();
+      
+      // Check for the new button styling
+      const buttonStyle = swapButton.getAttribute('style');
+      expect(buttonStyle).toContain('background-color: rgb(74, 74, 74)');
+      expect(buttonStyle).toContain('border: 1px solid #555');
+      expect(buttonStyle).toContain('border-radius: 3px');
     });
   });
 });
