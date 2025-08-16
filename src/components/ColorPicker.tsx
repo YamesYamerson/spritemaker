@@ -452,21 +452,20 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
 
 
 
-      {/* Color inputs */}
+      {/* Color inputs and HSV values */}
       <div style={{ marginBottom: '15px' }}>
         <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '8px',
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr',
+          gap: '15px',
           marginBottom: '8px' 
         }}>
-          <label style={{ whiteSpace: 'nowrap' }}>Hex:</label>
           <input
             type="text"
             value={primaryColor}
             onChange={handleHexChange}
             style={{
-              flex: 1,
+              width: '100%',
               padding: '4px',
               backgroundColor: '#444',
               border: '1px solid #555',
@@ -475,6 +474,19 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
               fontSize: '11px'
             }}
           />
+          <div style={{ 
+            fontSize: '10px', 
+            color: '#aaa',
+            display: 'flex',
+            gap: '15px',
+            whiteSpace: 'nowrap',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <span>H: {Math.round(hue)}°</span>
+            <span>S: {Math.round(saturation)}%</span>
+            <span>V: {Math.round(value)}%</span>
+          </div>
         </div>
       </div>
 
@@ -501,19 +513,6 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             }}
           />
         ))}
-      </div>
-
-      {/* HSV values display */}
-      <div style={{ 
-        fontSize: '10px', 
-        color: '#aaa',
-        display: 'flex',
-        gap: '15px',
-        marginTop: '8px'
-      }}>
-        <span>H: {Math.round(hue)}°</span>
-        <span>S: {Math.round(saturation)}%</span>
-        <span>V: {Math.round(value)}%</span>
       </div>
     </div>
   )
