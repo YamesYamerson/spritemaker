@@ -195,6 +195,16 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
     // Clear canvas first
     ctx.clearRect(0, 0, width, height)
     
+    // Draw checkerboard background pattern
+    const checkerSize = 8
+    for (let x = 0; x < width; x += checkerSize) {
+      for (let y = 0; y < height; y += checkerSize) {
+        const isEven = ((x / checkerSize) + (y / checkerSize)) % 2 === 0
+        ctx.fillStyle = isEven ? '#ccc' : '#fff'
+        ctx.fillRect(x, y, checkerSize, height - y < checkerSize ? height - y : checkerSize)
+      }
+    }
+    
     try {
       // Create alpha gradient from transparent to full color
       const gradient = createSafeGradient(ctx, 0, 0, width, 0, [
@@ -224,7 +234,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         ctx.fillRect(0, 0, width, height)
       }
     }
-  }, [hue, saturation, value])
+  }, [hue, saturation, value, alpha])
 
   // Handle canvas clicks
   const handleGradientClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -482,7 +492,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         <canvas
           ref={hueRef}
           width={160}
-          height={30}
+          height={15}
           onMouseDown={(e) => handleMouseDown(e, 'hue')}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -499,15 +509,16 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           style={{
             position: 'absolute',
             left: `${(hue / 360) * 100}%`,
-            top: '50%',
+            top: '-1px',
             width: '8px',
-            height: '30px', // Match the canvas height
+            height: '23px',
             border: '2px solid #fff',
             borderRadius: '2px',
             backgroundColor: 'transparent',
-            transform: 'translate(-50%, -50%)',
+            transform: 'translateX(-50%)',
             pointerEvents: 'none',
-            boxShadow: '0 0 4px rgba(0,0,0,0.8)'
+            boxShadow: '0 0 4px rgba(0,0,0,0.8)',
+            boxSizing: 'border-box'
           }}
         />
       </div>
@@ -519,7 +530,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           <canvas
             ref={alphaRef}
             width={160}
-            height={30}
+            height={15}
             onMouseDown={(e) => handleMouseDown(e, 'alpha')}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -535,67 +546,22 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: `${alpha * 100}%`,
-              top: '50%',
+              left: `${(alpha * 100)}%`,
+              top: '-1px',
               width: '8px',
-              height: '30px', // Match the canvas height
+              height: '23px',
               border: '2px solid #fff',
               borderRadius: '2px',
               backgroundColor: 'transparent',
-              transform: 'translate(-50%, -50%)',
+              transform: 'translateX(-50%)',
               pointerEvents: 'none',
-              boxShadow: '0 0 4px rgba(0,0,0,0.8)'
+              boxShadow: '0 0 4px rgba(0,0,0,0.8)',
+              boxSizing: 'border-box'
             }}
           />
         </div>
         
-        {/* Alpha preview - shows current color with transparency */}
-        <div style={{
-          height: '30px',
-          position: 'relative',
-          border: '1px solid #555',
-          borderRadius: '4px',
-          overflow: 'hidden',
-          marginBottom: '8px'
-        }}>
-          {/* Checkerboard background */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `
-              linear-gradient(45deg, #ccc 25%, transparent 25%),
-              linear-gradient(-45deg, #ccc 25%, transparent 25%),
-              linear-gradient(45deg, transparent 75%, #ccc 75%),
-              linear-gradient(-45deg, transparent 75%, #ccc 75%)
-            `,
-            backgroundSize: '8px 8px',
-            backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
-          }} />
-          {/* Color with current alpha - use HSV to RGB conversion for accurate colors */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: (() => {
-              try {
-                const rgbColor = hsvToRgb(hue, saturation, value)
-                // Convert hex to RGB values for rgba
-                const r = parseInt(rgbColor.slice(1, 3), 16)
-                const g = parseInt(rgbColor.slice(3, 5), 16)
-                const b = parseInt(rgbColor.slice(5, 7), 16)
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`
-              } catch (error) {
-                console.warn('Failed to convert HSV to RGB for alpha preview:', error)
-                return `hsla(${hue}, ${saturation}%, ${Math.round((2 - saturation/100) * value/100 * 50)}%, ${alpha})`
-              }
-            })()
-          }} />
-        </div>
+
         
         {/* Alpha percentage display */}
         <div style={{
@@ -648,7 +614,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
       {/* Color swatches */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(6, 1fr)',
+        gridTemplateColumns: 'repeat(5, 1fr)',
         gap: '0px',
         marginTop: '15px'
       }}>
@@ -657,11 +623,11 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
             key={index}
             onClick={() => handleColorChange(color)}
             style={{
-              width: '20px',
+              width: '100%',
               height: '20px',
               backgroundColor: color,
               border: '1px solid #555',
-              borderRadius: '2px',
+              borderRadius: '0px',
               cursor: 'pointer',
               position: 'relative',
               boxShadow: color === primaryColor ? '0 0 4px rgba(255,255,255,0.8)' : 'none'
@@ -671,10 +637,16 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
       </div>
 
       {/* HSV values display */}
-      <div style={{ fontSize: '10px', color: '#aaa' }}>
-        <div>H: {Math.round(hue)}°</div>
-        <div>S: {Math.round(saturation)}%</div>
-        <div>V: {Math.round(value)}%</div>
+      <div style={{ 
+        fontSize: '10px', 
+        color: '#aaa',
+        display: 'flex',
+        gap: '15px',
+        marginTop: '8px'
+      }}>
+        <span>H: {Math.round(hue)}°</span>
+        <span>S: {Math.round(saturation)}%</span>
+        <span>V: {Math.round(value)}%</span>
       </div>
     </div>
   )
