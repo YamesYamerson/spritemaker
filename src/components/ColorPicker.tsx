@@ -56,6 +56,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
   secondaryColor,
   onSecondaryColorChange
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   // Use simple state instead of refs to avoid complexity
   const [hue, setHue] = useState(0)
   const [saturation, setSaturation] = useState(100)
@@ -327,14 +328,47 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
           <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
             Color Picker
           </span>
+                      <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: '#4a4a4a',
+                border: '1px solid #555',
+                borderRadius: '3px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                minWidth: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={isCollapsed ? 'Expand' : 'Collapse'}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="currentColor"
+                style={{
+                  transform: isCollapsed ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s ease'
+                }}
+              >
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
+            </button>
         </div>
 
         {/* Color Picker Content */}
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          padding: '12px'
-        }}>
+        {!isCollapsed && (
+          <div style={{
+            flex: 1,
+            minHeight: 0,
+            padding: '12px'
+          }}>
           {/* Main color display */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
             <div style={{
@@ -547,6 +581,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
         ))}
       </div>
         </div>
+        )}
       </div>
     </div>
   )

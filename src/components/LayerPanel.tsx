@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Layer, PixelData } from '../types'
 
 // Function to generate thumbnail for a layer
@@ -66,6 +66,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   onLayerSelect,
   onDeleteLayer
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   return (
     <div style={{
       width: '100%',
@@ -95,36 +96,71 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
           <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
             Layers
           </span>
-          <button
-            onClick={onNewLayer}
-            style={{
-              padding: '4px 8px',
-              backgroundColor: '#4a4a4a',
-              border: '1px solid #555',
-              borderRadius: '3px',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              minWidth: '24px',
-              height: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            title="New Layer"
-          >
-            +
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={onNewLayer}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: '#4a4a4a',
+                border: '1px solid #555',
+                borderRadius: '3px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                minWidth: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="New Layer"
+            >
+              +
+            </button>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: '#4a4a4a',
+                border: '1px solid #555',
+                borderRadius: '3px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                minWidth: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={isCollapsed ? 'Expand' : 'Collapse'}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="currentColor"
+                style={{
+                  transform: isCollapsed ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s ease'
+                }}
+              >
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Layers List */}
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          padding: '8px'
-        }}>
+        {!isCollapsed && (
+          <div style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '8px'
+          }}>
           {layers.length === 0 ? (
             <div style={{
               padding: '20px',
@@ -228,6 +264,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
             ))
           )}
         </div>
+        )}
       </div>
     </div>
   )

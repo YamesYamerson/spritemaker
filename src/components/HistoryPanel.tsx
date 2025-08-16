@@ -15,6 +15,7 @@ interface HistoryOperation {
 }
 
 const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const [history, setHistory] = useState<{
     undoCount: number
     redoCount: number
@@ -206,50 +207,85 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
           <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
             History
           </span>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                onClick={handleUndo}
+                disabled={!history.canUndo}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: history.canUndo ? '#4a4a4a' : '#2a2a2a',
+                  border: '1px solid #555',
+                  borderRadius: '3px',
+                  color: history.canUndo ? '#fff' : '#666',
+                  cursor: history.canUndo ? 'pointer' : 'not-allowed',
+                  fontSize: '11px',
+                  minWidth: '40px'
+                }}
+                title="Undo (Ctrl+Z)"
+              >
+                Undo
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!history.canRedo}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: history.canRedo ? '#4a4a4a' : '#2a2a2a',
+                  border: '1px solid #555',
+                  borderRadius: '3px',
+                  color: history.canRedo ? '#fff' : '#666',
+                  cursor: history.canRedo ? 'pointer' : 'not-allowed',
+                  fontSize: '11px',
+                  minWidth: '40px'
+                }}
+                title="Redo (Ctrl+Y)"
+              >
+                Redo
+              </button>
+            </div>
             <button
-              onClick={handleUndo}
-              disabled={!history.canUndo}
+              onClick={() => setIsCollapsed(!isCollapsed)}
               style={{
                 padding: '4px 8px',
-                backgroundColor: history.canUndo ? '#4a4a4a' : '#2a2a2a',
+                backgroundColor: '#4a4a4a',
                 border: '1px solid #555',
                 borderRadius: '3px',
-                color: history.canUndo ? '#fff' : '#666',
-                cursor: history.canUndo ? 'pointer' : 'not-allowed',
-                fontSize: '11px',
-                minWidth: '40px'
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                minWidth: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
-              title="Undo (Ctrl+Z)"
+              title={isCollapsed ? 'Expand' : 'Collapse'}
             >
-              Undo
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!history.canRedo}
-              style={{
-                padding: '4px 8px',
-                backgroundColor: history.canRedo ? '#4a4a4a' : '#2a2a2a',
-                border: '1px solid #555',
-                borderRadius: '3px',
-                color: history.canRedo ? '#fff' : '#666',
-                cursor: history.canRedo ? 'pointer' : 'not-allowed',
-                fontSize: '11px',
-                minWidth: '40px'
-              }}
-              title="Redo (Ctrl+Y)"
-            >
-              Redo
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="currentColor"
+                style={{
+                  transform: isCollapsed ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.2s ease'
+                }}
+              >
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
             </button>
           </div>
         </div>
 
         {/* History Operations List */}
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto'
-        }}>
+        {!isCollapsed && (
+          <div style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto'
+          }}>
           {historyOperations.length === 0 ? (
             <div style={{
               padding: '20px',
@@ -342,6 +378,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ canvasRef }) => {
             ))
           )}
         </div>
+        )}
       </div>
     </div>
   )
