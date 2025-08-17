@@ -212,7 +212,7 @@ function App() {
         gap: '15px',
         flexShrink: 0,
         height: '100vh',
-        overflow: 'hidden'
+        overflow: 'auto'
       }}>
         {/* Layer Panel - Top of right column */}
         <div style={{ 
@@ -243,7 +243,8 @@ function App() {
         {/* Template Panel - Below History Panel */}
         <div style={{ 
           width: '100%',
-          flexShrink: 0
+          flex: 1,
+          minHeight: 0
         }}>
           <ErrorBoundary>
             <TemplatePanel
