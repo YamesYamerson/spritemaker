@@ -167,6 +167,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     { id: 'move-selection', name: 'Move Selection', icon: '/icons/move-selection.svg', iconType: 'svg' },
     { id: 'select', name: 'Select', icon: '/icons/select.svg', iconType: 'svg' },
     { id: 'lasso', name: 'Lasso', icon: '/icons/lasso.svg', iconType: 'svg' },
+    { id: 'magic-wand', name: 'Magic Wand', icon: '/icons/gimp-all/default-svg/gimp-tool-fuzzy-select.svg', iconType: 'svg' },
     { id: 'brush-size', name: 'Brush Size', icon: '', iconType: 'svg' },
     { id: 'pencil', name: 'Pencil', icon: '/icons/pencil.svg', iconType: 'svg' },
     { id: 'eraser', name: 'Eraser', icon: '/icons/eraser.svg', iconType: 'svg' },

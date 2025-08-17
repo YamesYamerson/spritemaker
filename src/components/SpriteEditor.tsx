@@ -1226,7 +1226,7 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
     if (selectedTool !== 'select' && (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize)) return
     
           // For select and lasso tools, always clear existing selection when starting a new one
-    if ((selectedTool === 'select' || selectedTool === 'lasso') && selection) {
+    if ((selectedTool === 'select' || selectedTool === 'lasso' || selectedTool === 'magic-wand') && selection) {
       setSelection(null)
       setIsSelecting(false) // Stop any active selecting
       setIsLassoing(false) // Stop any active lassoing
@@ -1319,6 +1319,40 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       setLassoPath([{ x: clampedX, y: clampedY }])
       // Don't create a drawing action - lasso is just visual
       setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+    } else if (selectedTool === 'magic-wand') {
+      // For magic wand tool, select adjacent pixels of the same color
+      const clampedX = Math.max(0, Math.min(x, canvasSize - 1))
+      const clampedY = Math.max(0, Math.min(y, canvasSize - 1))
+      const targetColor = getColorAt(clampedX, clampedY)
+      
+      // Use flood fill algorithm to find all adjacent pixels of the same color
+      const selectedPixels = magicWandSelect(clampedX, clampedY, targetColor)
+      
+      if (selectedPixels.size > 0) {
+        // For magic wand, we need to create a selection that represents the actual pixels
+        // rather than just a bounding rectangle. We'll use the first pixel as start and
+        // create a special selection type that the rendering system can handle.
+        
+        // Find the bounds of the selected pixels
+        let minX = clampedX, maxX = clampedX, minY = clampedY, maxY = clampedY
+        selectedPixels.forEach((pixel: PixelData) => {
+          minX = Math.min(minX, pixel.x)
+          maxX = Math.max(maxX, pixel.x)
+          minY = Math.min(minY, pixel.y)
+          maxY = Math.max(maxY, pixel.y)
+        })
+        
+        // Create a selection that covers the actual selected pixels
+        setSelection({
+          startPos: { x: minX, y: minY },
+          currentPos: { x: maxX, y: maxY },
+          rawCurrentPos: { x: maxX, y: maxY },
+          isActive: true,
+          content: selectedPixels
+        })
+        setIsSelecting(false) // Magic wand doesn't need active selecting
+        setCurrentDrawingAction(prev => ({ ...prev, isActive: false }))
+      }
     } else if (selectedTool === 'move-selection') {
       // For move-selection tool, check if we have an active selection
       if (selection) {
@@ -2221,6 +2255,41 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
             // Fallback to solid line if setLineDash is not supported
             ctx.stroke()
           }
+      } else if (selectedTool === 'magic-wand' && selection.content && selection.content.size > 0) {
+        // For magic wand, highlight the actual selected pixels with individual outlines
+        // First draw a subtle highlight of the selected pixels
+        ctx.globalAlpha = 0.3
+        ctx.fillStyle = '#1e3a8a'
+        
+        selection.content.forEach((pixelData) => {
+          const pixelX = pixelData.x * pixelSize
+          const pixelY = pixelData.y * pixelSize
+          ctx.fillRect(pixelX, pixelY, pixelSize, pixelSize)
+        })
+        
+        // Now draw an outline around each selected pixel with animated dashed lines
+        ctx.globalAlpha = 0.8
+        ctx.strokeStyle = '#1e3a8a'
+        ctx.lineWidth = 1
+        
+        // Use animated dashed lines for the pixel outlines
+        if (ctx.setLineDash) {
+          const dashOffset = (animationTime * 0.5) % 10
+          ctx.setLineDash([3, 3])
+          ctx.lineDashOffset = dashOffset
+        }
+        
+        // Draw outline around each selected pixel
+        selection.content.forEach((pixelData) => {
+          const pixelX = pixelData.x * pixelSize
+          const pixelY = pixelData.y * pixelSize
+          ctx.strokeRect(pixelX, pixelY, pixelSize, pixelSize)
+        })
+        
+        if (ctx.setLineDash) {
+          ctx.setLineDash([])
+          ctx.lineDashOffset = 0
+        }
       } else {
         // Draw selection rectangle with animated dashed lines
         // Calculate bounds using raw coordinates but clamp to canvas boundaries for display
@@ -2370,6 +2439,45 @@ const SpriteEditor: React.FC<SpriteEditorProps> = ({
       })
     }
   }, [onCanvasRef, undo, redo, canUndo, canRedo, getHistoryState, applyTemplate, pixels, canvasSize])
+
+  // Magic wand selection - find all adjacent pixels of the same color
+  const magicWandSelect = useCallback((startX: number, startY: number, targetColor: Color): Map<string, PixelData> => {
+    const selectedPixels = new Map<string, PixelData>()
+    const visited = new Set<string>()
+    const stack: [number, number][] = [[startX, startY]]
+    
+    while (stack.length > 0) {
+      const [x, y] = stack.pop()!
+      const key = `${x},${y}`
+      
+      if (visited.has(key)) continue
+      visited.add(key)
+      
+      // Check if current position matches target color
+      const currentPixel = pixels.get(key)
+      const currentColor = currentPixel ? currentPixel.color : 'transparent'
+      
+      if (currentColor !== targetColor) continue
+      
+      // Add this pixel to selection
+      if (currentPixel) {
+        selectedPixels.set(key, currentPixel)
+      }
+      
+      // Add neighbors
+      const neighbors = [
+        [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]
+      ]
+      
+      for (const [nx, ny] of neighbors) {
+        if (nx >= 0 && nx < canvasSize && ny >= 0 && ny < canvasSize) {
+          stack.push([nx, ny])
+        }
+      }
+    }
+    
+    return selectedPixels
+  }, [pixels, canvasSize])
 
   return (
     <div className="canvas-container">
